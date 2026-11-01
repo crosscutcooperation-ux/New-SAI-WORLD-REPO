@@ -8,9 +8,9 @@ export function createArchitecturalTower(cfg,m,textureMaps={}){
   function block(w,h,d,x,y,z,material,name=''){const mesh=new T.Mesh(cube,material);mesh.scale.set(w,h,d);mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;mesh.name=name;g.add(mesh);return mesh;}
   function cyl(rt,rb,h,x,y,z,material,segments=32){const a=new T.Mesh(new T.CylinderGeometry(rt,rb,h,segments),material);a.position.set(x,y,z);a.castShadow=true;a.receiveShadow=true;g.add(a);return a;}
   function many(items,material,name){const mesh=new T.InstancedMesh(cube,material,items.length);const o=new T.Object3D();items.forEach((a,i)=>{o.position.set(a[0],a[1],a[2]);o.scale.set(a[3],a[4],a[5]);o.updateMatrix();mesh.setMatrixAt(i,o.matrix);});mesh.castShadow=true;mesh.receiveShadow=true;mesh.name=name;g.add(mesh);}
-  function facade(key){return textureMaps[key]?new T.MeshStandardMaterial({map:textureMaps[key],color:0xffffff,roughness:.86,metalness:0,envMapIntensity:.32}):m.stone;}
+  function facade(key){return textureMaps[key]?new T.MeshPhysicalMaterial({map:textureMaps[key],color:0xffffff,roughness:textureMaps[key+'Roughness']?1:.86,roughnessMap:textureMaps[key+'Roughness']??null,metalness:textureMaps[key+'Metalness']?1:0,metalnessMap:textureMaps[key+'Metalness']??null,clearcoat:textureMaps[key+'Glass']?1:0,clearcoatMap:textureMaps[key+'Glass']??null,clearcoatRoughness:.08,envMapIntensity:.85}):m.stone;}
   const center=facade('center'),left=facade('left'),right=facade('right');
-  const body=(front,side)=>[side,side,m.trim,m.stone,front,front];
+  const body=(front,side)=>[side,side,m.trim,m.stone,front,front===center?m.stone:front];
   block(38.2,1.2,24,0,.6,0,m.trim,'Stone foundation');
   // The facade images are UV materials on six-sided solid tower geometry.
   // Forward and rear faces, recessed wings and projecting balconies remain
@@ -18,11 +18,27 @@ export function createArchitecturalTower(cfg,m,textureMaps={}){
   block(14.8,94.5,22,0,51.4,1,body(center,left),'Central projecting volume');
   block(10.8,93.5,19.8,-12.8,50.9,-.4,body(left,left),'West recessed wing');
   block(10.8,93.5,19.8,12.8,50.9,-.4,body(right,right),'East recessed wing');
+  // The drop-off render shows a stone spine, narrow stair glazing and a columned lobby.
+  block(1.9,93,.14,0,51.3,-10.11,m.glass,'Rear stair glazing');
+  for(let floor=0;floor<31;floor++) block(1.95,.14,.23,0,5.1+floor*3.02,-10.16,m.trim);
+  block(35,3.8,19.5,0,2.55,0,m.stone,'Residential lobby');
+  for(const face of [-1,1]){
+    block(15.2,3.7,.25,0,2.6,face*10,m.glass,'Lobby curtain wall');
+    block(13.7,.44,3.6,0,4.48,face*11.25,m.trim,'Drop-off canopy');
+    block(12.8,.12,3.25,0,4.21,face*11.25,m.brass);
+    for(const x of [-6.3,-5.45,5.45,6.3]){
+      cyl(.21,.25,3.15,x,2.63,face*12.55,m.trim,16);
+      block(.65,.28,.65,x,4.12,face*12.55,m.trim);
+      block(.62,.22,.62,x,1.12,face*12.55,m.stone);
+    }
+    for(const x of [-4,-2,0,2,4])block(.075,3.35,.14,x,2.63,face*10.18,m.brass);
+  }
   const slabs=[],railPosts=[],handrails=[],cornices=[],pilasters=[];
   for(let f=0;f<31;f++){
     const y=4.8+f*3.05;
     for(const side of [-1,1])for(const x of [-3.7,3.7]){
-      const z=side>0?12.65:-10.65;
+      if(side<0)continue;
+      const z=12.65;
       slabs.push([x,y,z,6.05,.17,1.45]);
       handrails.push([x,y+.87,z+side*.62,5.95,.055,.06]);
       handrails.push([x,y+.12,z+side*.62,5.95,.045,.05]);

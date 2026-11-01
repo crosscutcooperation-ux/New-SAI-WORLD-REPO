@@ -9,10 +9,12 @@ A genuinely orbitable, browser-rendered 3D reconstruction based on the supplied 
 ## Experience
 
 - Free 360-degree orbit, pan, pinch/scroll zoom, automatic orbit, fullscreen and courtyard/aerial/boulevard/plan viewpoints.
-- Tower selection and amenity camera focus; original renders are optional reference images in a separate dialog.
-- Sandstone surface detail, photo-derived facade detail, HDR outdoor illumination/reflections, soft shadows, screen-space ambient occlusion in High detail mode and FXAA.
-- Desktop defaults to High detail. Narrow screens default to Standard for frame rate; the detail button changes ambient occlusion.
-- Keyboard: focus the canvas, use arrows to orbit, +/- to zoom and Escape to reset.
+- Tap the pool/water or courtyard in the model, use the floating entry markers, or choose a walking area in the sidebar. The camera lowers to eye level.
+- Outdoor walking zones cover the pool deck and central courtyard. Drag to look, use WASD/arrows or the on-screen movement pad, and tap clear paths to walk to them. Click-to-walk routes around the water and obstacles; movement stays on the modeled outdoor surfaces.
+- Each walking area has a guided route, pause/resume and live canvas video recording. Completed clips download locally without microphone access or uploads. Browser support is detected before offering recording.
+- Tower selection uses simple picking proxies. Small static pieces are batched, shadows are cached, distant fine rails are culled, rendering sleeps when idle and movement is capped at 30 rendered frames per second.
+- Balanced rendering is the default on every screen. High detail loads ambient occlusion on demand. Render resolution can reduce under sustained load.
+- In overview, arrows orbit, +/- zoom and Escape resets. In walking mode, arrows/WASD move and Escape returns to overview.
 
 ## Geometry and materials
 
@@ -20,7 +22,7 @@ A genuinely orbitable, browser-rendered 3D reconstruction based on the supplied 
 
 `scripts/prepare-render-assets.py` extracts facade/stone samples from the supplied TIFF and prepares other material maps and local Three.js addons. It uses Pillow. The HDR sky is Kloppenheim 05 (Pure Sky), Greg Zaal / Jarod Guest, from [Poly Haven](https://polyhaven.com/a/kloppenheim_05_puresky), CC0. Three.js is MIT licensed; its license is in `dist/vendor/LICENSE.three`.
 
-`npm run check` checks JavaScript syntax. The earlier untextured GLB export remains an initial geometry artifact and is not presented as the final textured scene. The active website renders the current mesh and materials directly.
+`npm run check` checks JavaScript syntax; `npm test` verifies route reachability, collision avoidance, area boundaries and static batching. `dist/walk-navigation.js` contains the walkable limits and route planner; `dist/walkthrough-controller.js` controls walking, guided routes and recording. The GLB export contains the current untextured geometry. The active website renders the current mesh and materials directly.
 
 ## Accuracy limits
 

@@ -1,5 +1,8 @@
 import * as T from './vendor/three.module.js';
-import {createArchitecturalTower} from './architectural-tower.js';
+import {createArchitecturalTower} from './architectural-tower.js?v=architecture-4c';
+import {createAmenityDeck} from './amenity-deck.js?v=walkthrough-3c';
+import {createBusinessPark} from './business-park.js?v=architecture-4c';
+import {createPodium} from './podium.js?v=architecture-4c';
 
 // A reference-led exterior study, not an architectural survey. Units are illustrative.
 export const towerLayout = [
@@ -25,12 +28,18 @@ const materials=Object.fromEntries(Object.entries(palette).map(([k,v])=>[k,mat(v
 let facadeMaps={};
 export function setArchitecturalMaterials(t){
   facadeMaps={center:t.center,left:t.left,right:t.right};
+  for(const name of ['center','left','right'])for(const suffix of ['Roughness','Metalness','Glass'])facadeMaps[name+suffix]=t[name+suffix];
   if(t.stone){materials.stone.map=t.stone;materials.stone.color.set(0xd2c3a9);materials.stone.roughness=.84;materials.wall.map=t.stone;}
   if(t.bump){for(const k of ['stone','trim','wall','path']){materials[k].bumpMap=t.bump;materials[k].bumpScale=.045;}}
   if(t.grass){materials.grass.map=t.grass;materials.grass.color.set(0xb6c197);materials.hedge.color.set(0x37572c);}
   if(t.water){materials.water.bumpMap=t.water;materials.water.bumpScale=.13;materials.water.roughness=.09;materials.water.metalness=.4;materials.water.color.set(0x60b8c2);}
   materials.glass.color.set(0x5d8292);materials.glass.metalness=.6;materials.glass.roughness=.19;
   if(t.asphalt)materials.road.map=t.asphalt;
+  if(t.poolPattern){materials.water.map=t.poolPattern;materials.water.color.set(0xffffff);materials.water.metalness=.12;}
+  if(t.wood)materials.wood=new T.MeshStandardMaterial({map:t.wood,color:0xffffff,roughness:.85});
+  if(t.font)materials.font=t.font;
+  if(t.relief)materials.relief=t.relief;
+  materials.shopDisplay=t.shopDisplay;materials.shopUpper=t.shopUpper;
 }
 function box(g,w,h,d,x,y,z,m,name=''){
   const mesh=new T.Mesh(unit,m);mesh.scale.set(w,h,d);mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;mesh.name=name;g.add(mesh);return mesh;
@@ -44,6 +53,7 @@ function cylinder(g,r1,r2,h,x,y,z,m,segments=24){const a=new T.Mesh(new T.Cylind
 function line(g,pts,color=0xf3eee1,width=1){const a=new T.Line(new T.BufferGeometry().setFromPoints(pts.map(p=>new T.Vector3(...p))),new T.LineBasicMaterial({color,linewidth:width}));g.add(a);return a;}
 
 export function buildSite(){
+  const walkObstacles=[];
   const root=new T.Group();root.name='World Dreams — reference-led exterior reconstruction';root.userData={description:'Approximate 3D study from supplied architectural renders. Unverified dimensions, floor counts and contextual buildings. No apartment interiors.',source:'User-supplied render folder'};
   const towers=towerLayout.map(c=>{const g=createArchitecturalTower(c,materials,facadeMaps);root.add(g);return g;});
   const land=new T.Group();land.name='Landscape and amenity podium';root.add(land);
@@ -64,30 +74,13 @@ export function buildSite(){
     for(let n=0;n<7;n++)pavers.push([x-10+n*3.5,1.27,z,2.4,.14,1.8]);
   }
   batch(land,hedges,hedge,unit,'Garden hedges');batch(land,pavers,trim,unit,'Stepping stones');
+  for(const a of hedges)walkObstacles.push({zone:'garden',x:a[0],z:a[2],w:a[3],d:a[5]});
   cylinder(land,6,6,.3,0,1.3,4,path);cylinder(land,4.7,4.7,.26,0,1.55,4,water);cylinder(land,.5,1,3.4,0,3.3,4,trim);
   const benches=[];for(const x of [-59,59,-14,14])for(let z=-29;z<28;z+=17)benches.push([x,1.9,z,4,.4,1]);batch(land,benches,materials.wall);
-  // A continuous low-rise retail and clubhouse frontage.
-  box(land,185,10.4,24,0,6.3,59,stone,'Retail and clubhouse podium');
-  box(land,189,.65,27,0,11.7,59,trim);
-  const shopWindows=[],arcadeCols=[],retailBands=[];
-  for(let i=0;i<35;i++){
-    const x=-88+i*5.2;
-    for(const y of [3.4,7.7])shopWindows.push([x,y,71.12,4.1,3.2,.22]);
-    arcadeCols.push([x+2.5,5.5,72.3,.48,10,.9]);
-  }
-  for(const y of [1.4,5.5,10.7])retailBands.push([0,y,72.2,185,.45,1.8]);
-  batch(land,shopWindows,glass,unit,'Commercial glazing');batch(land,arcadeCols,trim,unit,'Boulevard colonnade');batch(land,retailBands,trim);
-  // Rooftop gardens, pool and round pavilion, visible in the reference collection.
-  box(land,53,.22,21,0,12.25,60,path);
-  box(land,39,.25,13,0,12.5,64,water,'Pool terrace');
-  box(land,42,.18,.65,0,12.72,71,trim);box(land,42,.18,.65,0,12.72,57,trim);
-  for(const x of [-20.5,20.5])box(land,.65,.18,14,x,12.72,64,trim);
-  cylinder(land,11,11,.6,0,12.8,47,path);
-  cylinder(land,8.5,8.5,.7,0,16.8,47,trim);
-  cylinder(land,5.4,5.4,.45,0,20.2,47,trim);
-  cylinder(land,4.8,4.8,2.6,0,18.6,47,glass);
-  for(let i=0;i<12;i++){let a=i*Math.PI/6;cylinder(land,.24,.24,3.9,8*Math.cos(a),14.8,47+8*Math.sin(a),trim,8);}
-  const loungers=[];for(const x of [-25,25])for(let z=53;z<72;z+=4)loungers.push([x,12.8,z,1.5,.45,2.8]);batch(land,loungers,trim);
+  for(const a of benches)walkObstacles.push({zone:'garden',x:a[0],z:a[2],w:a[3],d:a[5]});
+  const podium=createPodium(materials);land.add(podium);
+  // Ground-level detail follows the poolside and rooftop pavilion references.
+  const amenityDeck=createAmenityDeck(materials);land.add(amenityDeck.group);walkObstacles.push(...amenityDeck.obstacles);
   // Rooftop sport courts and an elevated red walking loop.
   for(const [x,type] of [[-57,'tennis'],[57,'futsal']]){
     box(land,44,.3,19,x,12.25,58,grass);
@@ -103,34 +96,61 @@ export function buildSite(){
     for(const px of [x-19.5,x+19.5])box(land,1.4,.16,21,px,12.7,58,materials.wall);
     line(land,[[x-18.8,12.8,48],[x+18.8,12.8,48],[x+18.8,12.8,68],[x-18.8,12.8,68],[x-18.8,12.8,48]],0xdcc4ad);
   }
-  // Taller commercial blocks at the road-side corner, simplified from renders.
-  for(const [x,z,h,w,d] of [[105,61,89,22,22],[105,29,75,20,19]]){
-    const g=new T.Group();g.name='Commercial exterior massing';land.add(g);
-    box(g,w,h,d,x,h/2+12,z,materials.wall);
-    const ribs=[],glazing=[],belts=[];
-    for(let side of [-1,1]){
-      for(let c=-2;c<=2;c++){ribs.push([x+c*w/5,h/2+12,z+side*(d/2+.35),.5,h+1,.8]);glazing.push([x+c*w/5+w/10,h/2+12,z+side*(d/2+.1),w/5-.65,h-6,.18]);}
-      for(let c=-2;c<=2;c++)ribs.push([x+side*(w/2+.3),h/2+12,z+c*d/5,.8,h+1,.5]);
-      glazing.push([x+side*(w/2+.1),h/2+12,z,.18,h-6,d-1]);
-    }
-    for(let y=16;y<h+10;y+=3)belts.push([x,y,z,w+.5,.16,d+.5]);
-    batch(g,glazing,glass);batch(g,ribs,trim);batch(g,belts,stone);
-    box(g,w+2,.9,d+2,x,h+12,z,trim);box(g,w+1,.6,d+1,x,h+8,z,trim);
-  }
+  const businessPark=createBusinessPark(materials);land.add(businessPark);
   // Trees are instanced to keep the scene practical on phones.
   const trunks=[],crowns=[],palms=[],fronds=[];
   const rnd=(i)=>{const n=Math.sin(i*127.1+8.13)*43758.5453;return n-Math.floor(n);};
   let seed=0;
-  function tree(x,z,scale=1){const a=seed++;trunks.push([x,2.7*scale,z,.22*scale,3.8*scale,.22*scale]);for(let j=0;j<22;j++){const u=rnd(a*41+j)*Math.PI*2,r=Math.sqrt(rnd(a*41+j+31))*2.6*scale,py=4.4*scale+rnd(a*41+j+63)*3*scale;crowns.push([x+Math.cos(u)*r,py,z+Math.sin(u)*r,(.6+rnd(j+a)*.5)*scale,(.7+rnd(j+a+8)*.55)*scale,(.7+rnd(j+a+12)*.5)*scale]);}}
-  function palm(x,z){palms.push([x,4.9,z,.23,7.5,.23]);for(let i=0;i<7;i++){const a=i*Math.PI*2/7;fronds.push([x+1.15*Math.cos(a),8.4,z+1.15*Math.sin(a),3.5,.22,.9,-a]);}}
+  function tree(x,z,scale=1){const a=seed++;trunks.push([x,2.7*scale,z,.22*scale,3.8*scale,.22*scale]);walkObstacles.push({zone:'garden',x,z,r:.3*scale});for(let j=0;j<22;j++){const u=rnd(a*41+j)*Math.PI*2,r=Math.sqrt(rnd(a*41+j+31))*2.6*scale,py=4.4*scale+rnd(a*41+j+63)*3*scale;crowns.push([x+Math.cos(u)*r,py,z+Math.sin(u)*r,(.6+rnd(j+a)*.5)*scale,(.7+rnd(j+a+8)*.55)*scale,(.7+rnd(j+a+12)*.5)*scale]);}}
+  function palm(x,z){
+    palms.push([x,4.9,z,.27,7.6,.27]);
+    for(let i=0;i<13;i++){
+      const angle=i*2.4+rnd(x+z)*.4, size=.76+rnd(i+x)*.43;
+      fronds.push([x,8.64,z,size,i%2?.76:1.2,size,angle]);
+    }
+    walkObstacles.push({zone:'garden',x,z,r:.33});
+  }
   for(let x=-95;x<=95;x+=7){tree(x,-65,.65+rnd(seed)*.3);tree(x,80,.7+rnd(seed)*.35);}
   for(let z=-50;z<=73;z+=7){tree(-103,z,.75);tree(103,z,.7);}
   for(let x=-61;x<=61;x+=15)for(let z=-32;z<=27;z+=17){if(Math.abs(x)>8)tree(x,z,.55+rnd(seed)*.25);}
   for(let x=-65;x<=65;x+=13){palm(x,36);palm(x,76);}
   for(let z=-28;z<=25;z+=13){palm(-8,z);palm(8,z);}
-  batch(land,trunks,materials.wall,unit,'Tree trunks');const foliage=batch(land,crowns,hedge,new T.SphereGeometry(1,7,5),'Tree canopy');for(let i=0;i<crowns.length;i++)foliage.setColorAt(i,new T.Color().setHSL(.22+rnd(i)*.08,.24+rnd(i+7)*.12,.55+rnd(i+33)*.27));batch(land,palms,materials.wall,unit,'Palm trunks');batch(land,fronds,grass,new T.SphereGeometry(1,8,4),'Palm fronds');
+  batch(land,trunks,mat(0x74604a),new T.CylinderGeometry(.7,1,1,9),'Tree trunks');
+  // One instanced spray carries folded leaves and fine branchlets rather than a solid crown.
+  const leaves=[],leafColors=[];
+  function facet(a,b,c,color){leaves.push(...a,...b,...c);leafColors.push(...color,...color,...color);}
+  for(let j=0;j<9;j++){
+    const azimuth=j*2.4,dx=Math.cos(azimuth),dz=Math.sin(azimuth),lift=rnd(j+19)*1.8-.8;
+    const end=[dx*1.1,lift,dz*1.1];
+    facet([-.045,0,0],[.045,0,0],end,[.14,.085,.04]);
+    for(let n=1;n<6;n++){
+      const t=n/5,side=n%2?1:-1,span=.17+.08*rnd(j*9+n),x=end[0]*t,y=lift*t,z=end[2]*t;
+      const root=[x,y,z],tip=[x+dx*.24-dz*side*span,y+.16,z+dz*.24+dx*side*span];
+      const mid=[(x+tip[0])*.5,(y+tip[1])*.5,(z+tip[2])*.5];
+      const tone=.6+rnd(j*11+n)*.7;
+      facet(root,[mid[0]+dx*.12,mid[1]+.045,mid[2]+dz*.12],tip,[.092*tone,.21*tone,.044*tone]);
+      facet(root,tip,[mid[0]-dx*.12,mid[1]-.02,mid[2]-dz*.12],[.067*tone,.15*tone,.035*tone]);
+    }
+  }
+  const spray=new T.BufferGeometry();spray.setAttribute('position',new T.Float32BufferAttribute(leaves,3));spray.setAttribute('color',new T.Float32BufferAttribute(leafColors,3));spray.computeVertexNormals();
+  for(let i=0;i<crowns.length;i++)crowns[i][6]=rnd(i)*6.28;
+  batch(land,crowns,new T.MeshStandardMaterial({vertexColors:true,side:T.DoubleSide,roughness:.92}),spray,'Branch and leaf sprays');
+  batch(land,palms,mat(0x806d52),new T.CylinderGeometry(.63,1,1,10),'Palm trunks');
+  const blade=[],bladeColors=[];
+  function triangle(a,b,c,tint){blade.push(...a,...b,...c);for(let k=0;k<3;k++)bladeColors.push(...tint);}
+  const arch=t=>1.04*Math.sin(t*Math.PI)-.76*t*t;
+  for(let j=0;j<29;j++){
+    const t=(j+.45)/30,x=t*3.6,y=arch(t),width=.08+.67*Math.sin(Math.PI*t)**.8;
+    for(const side of [-1,1]){
+      const root=[x,y,0],ridge=[x+.16,y+.04,side*width*.38],tip=[x+.28,y-.23-width*.33,side*width];
+      triangle(root,ridge,tip,[.115,.22,.061]);triangle(root,tip,[x+.085,y-.025,0],[.064,.148,.042]);
+    }
+    triangle([x-.065,y,.045],[x-.065,y,-.045],[x+.10,arch(t+.04),0],[.18,.25,.07]);
+  }
+  const pinnate=new T.BufferGeometry();pinnate.setAttribute('position',new T.Float32BufferAttribute(blade,3));pinnate.setAttribute('color',new T.Float32BufferAttribute(bladeColors,3));pinnate.computeVertexNormals();
+  batch(land,fronds,new T.MeshStandardMaterial({side:T.DoubleSide,vertexColors:true,roughness:.85}),pinnate,'Arching palm fronds');
   const context=new T.Group();context.name='Illustrative neighborhood — not geographically surveyed';
-  const contextMat=mat(0xd9ded7),contexts=[],contextTrees=[];
+  const contextMat=mat(0xd9ded7),contexts=[];
   box(context,1100,.5,1100,0,-3,0,mat(0xe5e8e0),'Context ground');
   // Road along the frontage, then a quieter local street behind.
   box(context,700,.1,21,0,-2.6,103,road);box(context,700,.12,2.4,0,-2.5,103,path);
@@ -142,11 +162,11 @@ export function buildSite(){
     if(Math.abs(x)<153&&z>-110&&z<145)continue;
     const h=5+rnd(i*4+2)*28,w=10+rnd(i+400)*17,d=10+rnd(i+700)*15;
     contexts.push([x,h/2-2.5,z,w,h,d]);
-    contextTrees.push([x+w*.7,2,z+d*.65,3,4,3]);
   }
-  batch(context,contexts,contextMat,unit,'Illustrative city blocks');batch(context,contextTrees,mat(0xc6cec0),new T.IcosahedronGeometry(1,0));
+  batch(context,contexts,contextMat,unit,'Illustrative city blocks').visible=false;
   const cars=[],carRoofs=[];
   for(let i=0;i<19;i++){const x=-150+i*17+(rnd(i+88)*6),z=i%2?98:109;cars.push([x,-1.9,z,3.6,.9,1.7]);carRoofs.push([x,-1.3,z,1.9,.5,1.55]);}
   batch(context,cars,mat(0xeaece7));batch(context,carRoofs,mat(0x798885));
-  return {root,towers,land,context};
+  context.position.y=3.32;
+  return {root,towers,land,context,walkObstacles,poolWater:amenityDeck.water,businessPark,podium};
 }
