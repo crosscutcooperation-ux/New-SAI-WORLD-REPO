@@ -1,8 +1,8 @@
 import * as T from './vendor/three.module.js';
-import {createArchitecturalTower} from './architectural-tower.js?v=architecture-4c';
+import {createArchitecturalTower} from './architectural-tower.js?v=architecture-4d';
 import {createAmenityDeck} from './amenity-deck.js?v=walkthrough-3c';
-import {createBusinessPark} from './business-park.js?v=architecture-4c';
-import {createPodium} from './podium.js?v=architecture-4c';
+import {createBusinessPark} from './business-park.js?v=architecture-4d';
+import {createPodium} from './podium.js?v=architecture-4d';
 
 // A reference-led exterior study, not an architectural survey. Units are illustrative.
 export const towerLayout = [
@@ -37,6 +37,7 @@ export function setArchitecturalMaterials(t){
   if(t.asphalt)materials.road.map=t.asphalt;
   if(t.poolPattern){materials.water.map=t.poolPattern;materials.water.color.set(0xffffff);materials.water.metalness=.12;}
   if(t.wood)materials.wood=new T.MeshStandardMaterial({map:t.wood,color:0xffffff,roughness:.85});
+  for(const key of ['clerestory','posters-west','posters-east','arcade-glass'])materials[key]=t[key];
   if(t.font)materials.font=t.font;
   if(t.relief)materials.relief=t.relief;
   materials.shopDisplay=t.shopDisplay;materials.shopUpper=t.shopUpper;
@@ -78,6 +79,7 @@ export function buildSite(){
   cylinder(land,6,6,.3,0,1.3,4,path);cylinder(land,4.7,4.7,.26,0,1.55,4,water);cylinder(land,.5,1,3.4,0,3.3,4,trim);
   const benches=[];for(const x of [-59,59,-14,14])for(let z=-29;z<28;z+=17)benches.push([x,1.9,z,4,.4,1]);batch(land,benches,materials.wall);
   for(const a of benches)walkObstacles.push({zone:'garden',x:a[0],z:a[2],w:a[3],d:a[5]});
+  box(land,207,.16,15,0,.99,79.5,path,'Paved boulevard promenade');
   const podium=createPodium(materials);land.add(podium);
   // Ground-level detail follows the poolside and rooftop pavilion references.
   const amenityDeck=createAmenityDeck(materials);land.add(amenityDeck.group);walkObstacles.push(...amenityDeck.obstacles);

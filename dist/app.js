@@ -3,10 +3,10 @@ import {OrbitControls} from './vendor/OrbitControls.js';
 import {RGBELoader} from './vendor/addons/loaders/RGBELoader.js';
 import {FontLoader} from './vendor/addons/loaders/FontLoader.js';
 import {Sky} from './vendor/addons/objects/Sky.js';
-import {buildSite,setArchitecturalMaterials,towerLayout,places} from './model.js?v=architecture-4c';
+import {buildSite,setArchitecturalMaterials,towerLayout,places} from './model.js?v=architecture-4d';
 import {mergeStaticPieces,createPickingScene} from './scene-optimization.js';
-import {WalkthroughController} from './walkthrough-controller.js?v=architecture-4c';
-import {ZONES} from './walk-navigation.js?v=architecture-4c';
+import {WalkthroughController} from './walkthrough-controller.js?v=architecture-4d';
+import {ZONES} from './walk-navigation.js?v=architecture-4d';
 
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const announce=s=>$('#announcement').textContent=s;
@@ -28,6 +28,7 @@ async function init(){
     load('water-bump.jpg',false,[7,7]).then(t=>['water',t]),load('asphalt.jpg',true,[40,3]).then(t=>['asphalt',t]),
     load('pool-pattern.jpg',true,[6,2]).then(t=>['poolPattern',t]),load('wood-deck.jpg',true,[40,8]).then(t=>['wood',t]),
     ...['center','left','right'].flatMap(name=>['Roughness','Metalness','Glass'].map(suffix=>load(`facade-${name}-${suffix.toLowerCase()}.jpg`,false).then(t=>[name+suffix,t]))),
+    ...['clerestory','posters-west','posters-east','arcade-glass'].map(key=>load(key+'.jpg').then(t=>[key,t])),
     load('shop-display.jpg').then(t=>['shopDisplay',t]),load('shop-upper.jpg').then(t=>['shopUpper',t]),
     load('plaza-relief.jpg').then(t=>['relief',t]),
     fetch('vendor/fonts/helvetiker_regular.typeface.json').then(r=>r.json()).then(json=>['font',new FontLoader().parse(json)]),

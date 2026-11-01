@@ -23,3 +23,13 @@ for name,corners in [
     transform=cv2.getPerspectiveTransform(np.float32(corners)*shop.shape[1]/1000,np.float32([[0,0],[127,0],[127,191],[0,191]]))
     cv2.imwrite(str(out/(name+'.jpg')),cv2.warpPerspective(shop,transform,(128,192)))
 print('Window-specific PBR maps and source relief prepared.')
+
+# Rectify only the middle frontage. Crop individual architectural bands so each
+# maps to its own recessed wall or projecting sign face in the 3D model.
+corners=np.float32([(934,102),(1231,59),(1231,230),(934,296)])*2+np.float32([702,1720])
+middle=cv2.warpPerspective(src,cv2.getPerspectiveTransform(corners,np.float32([[0,0],[899,0],[899,359],[0,359]])),(900,360))
+for name,(x0,y0,x1,y1) in {
+    'clerestory':(3,12,896,80),'posters-west':(2,98,298,210),
+    'posters-east':(620,98,898,210),'arcade-glass':(2,231,296,267)
+}.items():
+    cv2.imwrite(str(out/(name+'.jpg')),middle[y0:y1,x0:x1],[cv2.IMWRITE_JPEG_QUALITY,95])

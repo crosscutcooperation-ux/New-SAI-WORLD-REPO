@@ -21,6 +21,7 @@ export function createPodium(m){
   for(let i=0;i<35;i++){
     const x=-88+i*5.2;if(x>29&&x<47)continue;
     for(const y of [2.8,6.45,9.8]){
+      if(x>-17&&x<32&&y>3)continue;
       (y===2.8?shopfronts:panes).push([x,y,71.14,4.25,2.8,.18]);
       for(const dx of [-1.4,0,1.4])mullions.push([x+dx,y,71.28,.055,2.82,.07]);
     }
@@ -36,7 +37,9 @@ export function createPodium(m){
   }
   batch(upper,m.trim,'Upper arcade piers');box(47.8,.42,2.6,68.75,15.3,71,m.trim,'Upper arcade cornice');
   // High portico, as shown between the club and the east commercial frontage.
-  const outer=7,inner=5.55,spring=8.2,shape=new T.Shape();shape.moveTo(-outer,0);shape.lineTo(-outer,spring);shape.absarc(0,spring,outer,Math.PI,0,true);shape.lineTo(outer,0);shape.closePath();
+  const outer=7,inner=5.55,spring=8.2,shape=new T.Shape();
+  // The visible front is a square-headed stone wall framing the arched void.
+  shape.moveTo(-outer,0);shape.lineTo(-outer,15.2);shape.lineTo(outer,15.2);shape.lineTo(outer,0);shape.closePath();
   const hole=new T.Path();hole.moveTo(-inner,.03);hole.lineTo(inner,.03);hole.lineTo(inner,spring);hole.absarc(0,spring,inner,0,Math.PI,false);hole.closePath();shape.holes.push(hole);
   const portal=new T.Mesh(new T.ExtrudeGeometry(shape,{depth:2.8,bevelEnabled:true,bevelSize:.09,bevelThickness:.09,bevelSegments:1}),m.trim);portal.position.set(38,1,71.1);portal.name='Tall arched entrance — open passage';portal.castShadow=true;portal.receiveShadow=true;g.add(portal);
   // Continue both jambs into the passage and set the stair behind the street face.
@@ -50,6 +53,26 @@ export function createPodium(m){
   // The recessed arrival colonnade has actual round columns and a canopy.
   box(46,.5,7,-47,8.45,74,m.trim,'Arrival canopy');
   for(let x=-67;x<=-27;x+=8){const column=new T.Mesh(new T.CylinderGeometry(.32,.42,7.2,20),m.trim);column.position.set(x,4.75,76.5);column.castShadow=true;g.add(column);box(.95,.28,.95,x,8.23,76.5,m.trim);}
+  // Set the cinema displays forward of the recessed shop glazing, as in the street render.
+  function panel(key,x,y,width,height,z,metalness){
+    if(!m[key])return;
+    const material=new T.MeshStandardMaterial({map:m[key],roughness:metalness?.22:.74,metalness});
+    const mesh=new T.Mesh(new T.PlaneGeometry(width,height),material);
+    mesh.position.set(x,y,z);mesh.receiveShadow=true;g.add(mesh);
+  }
+  box(47.4,8.55,.65,7.2,8.0,72.35,m.trim,'Projecting central retail frontage');
+  panel('clerestory',7.2,11.1,46.4,1.85,72.69,.32);
+  panel('posters-west',-8.3,8.16,15.0,3.15,72.71,0);
+  panel('posters-east',22.8,8.16,15.0,3.15,72.71,0);
+  for(const x of [-8.3,7.2,22.8])panel('arcade-glass',x,5.26,15.0,1.65,72.71,.26);
+  for(const x of [3.35,11.05]){
+    const window=new T.Shape();
+    window.moveTo(-3.35,0);window.lineTo(-3.35,.3);
+    window.absellipse(0,.3,3.35,1.63,Math.PI,0,true,0);window.lineTo(3.35,0);window.closePath();
+    const pane=new T.Mesh(new T.ShapeGeometry(window),glazing);pane.position.set(x,6.61,72.70);g.add(pane);
+    box(.16,1.9,.17,x,7.55,72.79,m.trim);
+  }
+  for(const y of [4.25,6.41,9.95,12.22])box(47.8,.16,1,7.2,y,72.62,m.trim);
   // Left landmark relief panel is a textured architectural surface, not a view.
   box(13,.6,1.2,-83,12.5,72,m.trim);box(13,11.2,1.2,-83,6.9,72,m.trim);
   if(m.relief){const relief=new T.MeshStandardMaterial({map:m.relief,color:0xffffff,roughness:.62,metalness:.15});box(10.8,9.3,.12,-83,7.1,72.67,relief,'Reference-derived sculptural facade panel');}
