@@ -3,7 +3,7 @@ import * as T from './vendor/three.module.js';
 // One business-park tower, rebuilt from the roadside and commercial references.
 // Dimensions are inferred; this is not a measured architectural model.
 export function createBusinessPark(m){
-  const g=new T.Group();g.name='World Dreams Business Park';g.userData={role:'business-park',referenceBased:true};g.position.set(91,0,60);
+  const g=new T.Group();g.name='World Dreams Business Park';g.userData={role:'business-park',referenceBased:true};g.position.set(91,-2,60);
   const boxGeo=new T.BoxGeometry(1,1,1),dummy=new T.Object3D();
   const glass=new T.MeshPhysicalMaterial({color:0x7995ac,metalness:.32,roughness:.13,clearcoat:1,clearcoatRoughness:.09,envMapIntensity:1.25,ior:1.5});
   const dark=new T.MeshStandardMaterial({color:0x343a3c,roughness:.34,metalness:.66});
@@ -13,6 +13,16 @@ export function createBusinessPark(m){
   function batch(list,mat,name){const a=new T.InstancedMesh(boxGeo,mat,list.length);list.forEach((v,i)=>{dummy.position.set(v[0],v[1],v[2]);dummy.scale.set(v[3],v[4],v[5]);dummy.rotation.set(0,0,0);dummy.updateMatrix();a.setMatrixAt(i,dummy.matrix);});a.castShadow=true;a.receiveShadow=true;a.name=name;g.add(a);return a;}
   function rounded(w,d,r,h,y,mat,name){const s=new T.Shape(),x=-w/2,z=-d/2;s.moveTo(x+r,z);s.lineTo(x+w-r,z);s.quadraticCurveTo(x+w,z,x+w,z+r);s.lineTo(x+w,z+d-r);s.quadraticCurveTo(x+w,z+d,x+w-r,z+d);s.lineTo(x+r,z+d);s.quadraticCurveTo(x,z+d,x,z+d-r);s.lineTo(x,z+r);s.quadraticCurveTo(x,z,x+r,z);if(y===101.7){const opening=new T.Path();for(const [i,p] of [[-w/2+1,-d/2+1],[-w/2+1,d/2-1],[w/2-1,d/2-1],[w/2-1,-d/2+1]].entries())opening[i===0?"moveTo":"lineTo"](...p);opening.closePath();s.holes.push(opening);}const geo=new T.ExtrudeGeometry(s,{depth:h,bevelEnabled:false,curveSegments:10});geo.rotateX(-Math.PI/2);const a=new T.Mesh(geo,mat);a.position.y=y;a.castShadow=true;a.receiveShadow=true;a.name=name;g.add(a);return a;}
   rounded(29.2,25.2,2.6,.65,12,m.trim,'Stone podium footing');
+  // Continue the tower's arrival frontage down to the site terrace.
+  rounded(29.2,25.2,2.6,.45,3,m.trim,'Grounded arrival footing');
+  rounded(27.6,23.6,2.3,9.1,3.45,glass,'Ground-floor lobby glazing');
+  const arrivalPiers=[];
+  for(const side of [-1,1]){
+    for(let x=-12;x<=12;x+=4)arrivalPiers.push([x,7.75,side*12.1,.55,9.5,.7]);
+    for(let z=-8;z<=8;z+=4)arrivalPiers.push([side*14,7.75,z,.7,9.5,.55]);
+  }
+  batch(arrivalPiers,m.trim,'Grounded entrance stone piers');
+  for(const y of [6.4,9.5])rounded(28.2,24.2,2.4,.18,y,m.trim,'Arrival floor cornice');
   rounded(27.6,23.6,2.3,82,13,glass,'Rounded curtain-wall envelope');
   const piers=[],panes=[],mullions=[],panels=[],floorBelts=[],capitals=[];
   const frontBays=[-10,-6,-2,2,6,10],sideBays=[-8,-4,0,4,8];

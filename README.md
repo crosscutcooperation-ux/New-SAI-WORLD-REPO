@@ -1,4 +1,4 @@
-# World Dreams — textured 3D exterior explorer
+# Sai World Dreams — 3D Architectural Explorer
 
 A genuinely orbitable, browser-rendered 3D reconstruction based on the supplied architectural renders. The building is solid multi-volume geometry with recessed wings, projecting balcony slabs and railings, stone cornices, pilasters, pediments and tiered cupolas. Photo-derived facade materials are UV-mapped onto the solid mesh faces; the main view is not an image viewer or a panorama.
 
@@ -12,7 +12,7 @@ A genuinely orbitable, browser-rendered 3D reconstruction based on the supplied 
 - Tap the pool/water or courtyard in the model, use the floating entry markers, or choose a walking area in the sidebar. The camera lowers to eye level.
 - Outdoor walking zones cover the pool deck and central courtyard. Drag to look, use WASD/arrows or the on-screen movement pad, and tap clear paths to walk to them. Click-to-walk routes around the water and obstacles; movement stays on the modeled outdoor surfaces.
 - Each walking area has a guided route, pause/resume and live canvas video recording. Completed clips download locally without microphone access or uploads. Browser support is detected before offering recording.
-- Tower selection uses simple picking proxies. Small static pieces are batched, shadows are cached, distant fine rails are culled, rendering sleeps when idle and movement is capped at 30 rendered frames per second.
+- Tower selection uses simple picking proxies. Small static pieces are batched, shadows are cached, distant fine rails are culled, idle views stop redrawing and active movement renders at the display frame rate. Roof label sizes are cached between layout changes, and inactive outdoor lights are excluded from daylight rendering.
 - Balanced rendering is the default on every screen. High detail loads ambient occlusion on demand. Render resolution can reduce under sustained load.
 - In overview, arrows orbit, +/- zoom and Escape resets. In walking mode, arrows/WASD move and Escape returns to overview.
 

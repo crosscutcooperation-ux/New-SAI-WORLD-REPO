@@ -5,11 +5,11 @@ import {OrbitControls} from './vendor/OrbitControls.js';
 import {RGBELoader} from './vendor/addons/loaders/RGBELoader.js';
 import {FontLoader} from './vendor/addons/loaders/FontLoader.js';
 import {Sky} from './vendor/addons/objects/Sky.js';
-import {buildSite,setArchitecturalMaterials,towerLayout,places} from './model.js?v=roof-center-8';
+import {buildSite,setArchitecturalMaterials,towerLayout,places} from './model.js?v=grounded-business-1';
 import {mergeStaticPieces} from './scene-optimization.js?v=master-layout-7';
 import {WalkthroughController} from './walkthrough-controller.js?v=master-layout-7';
-import {createTowerElevation} from './tower-elevation.js?v=official-lighting-1';
-import {createArchitecturalLighting} from './architectural-lighting.js?v=original-day-2';
+import {createTowerElevation} from './tower-elevation.js?v=mesh-dim-only-7';
+import {createArchitecturalLighting} from './architectural-lighting.js?v=hero-performance-8';
 import {ZONES} from './walk-navigation.js?v=master-layout-7';
 
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
@@ -56,7 +56,7 @@ async function init(){
   $('#loading-message').textContent='Preparing the architecture and walking paths…';
   const scene=new T.Scene();scene.background=new T.Color(0xb5d6e7);scene.fog=new T.FogExp2(0xc4d6d6,.00082);
   const camera=new T.PerspectiveCamera(39,1,.15,1800);
-  const controls=new OrbitControls(camera,canvas);controls.enableDamping=true;controls.dampingFactor=.095;controls.maxPolarAngle=Math.PI/2-.025;controls.minPolarAngle=.025;controls.minDistance=38;controls.maxDistance=690;controls.autoRotateSpeed=.62;controls.zoomSpeed=.72;
+  const controls=new OrbitControls(camera,canvas);controls.enableDamping=false;controls.dampingFactor=.095;controls.maxPolarAngle=Math.PI/2-.025;controls.minPolarAngle=.025;controls.minDistance=38;controls.maxDistance=690;controls.autoRotateSpeed=.62;controls.zoomSpeed=.72;controls.rotateSpeed=.65;
   const sky=new Sky();sky.scale.setScalar(1300);const u=sky.material.uniforms;u.turbidity.value=4;u.rayleigh.value=1.4;u.mieCoefficient.value=.004;u.mieDirectionalG.value=.78;u.sunPosition.value.set(-.5,.8,.6).normalize();scene.add(sky);
   const pmrem=new T.PMREMGenerator(renderer);
   try{const hdr=await new RGBELoader().loadAsync('assets/environment.hdr');hdr.mapping=T.EquirectangularReflectionMapping;scene.environment=pmrem.fromEquirectangular(hdr).texture;scene.environmentIntensity=.5;hdr.dispose();}catch(e){scene.environment=pmrem.fromScene(sky,.04).texture;scene.environmentIntensity=.7;}pmrem.dispose();
@@ -118,6 +118,7 @@ async function init(){
   const gardenPick=new T.Mesh(new T.PlaneGeometry(130,26.5),pickMaterial);gardenPick.rotation.x=-Math.PI/2;gardenPick.position.set(0,1.3,25.75);gardenPick.userData.walkZone='garden';gardenPick.updateMatrixWorld();
   let dirty=true,flight=null,mode='overview',overviewSnapshot=null,high=false,composer=null,ssao=null,qualityRequest=0;
   let width=1,height=1,frames=0,lastTick=0,lastRender=0,ready=false,renderCost=0,costSamples=0,invalidation=0;
+  let labelSizesDirty=true,frameIntervalTotal=0,frameIntervalSamples=0;
   const invalidate=()=>{dirty=true;invalidation++;};
   document.addEventListener('floor-plan-open',()=>{pauseOrbit();if(mode!=='overview')exitWalk();});
   const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -133,7 +134,7 @@ async function init(){
     if(!ZONES[zone])return;
     $('#viewer').scrollIntoView({block:'start',behavior:reduced?'instant':'smooth'});
     if(mode==='overview')overviewSnapshot={position:camera.position.clone(),target:controls.target.clone()};
-    pauseOrbit();controls.enableDamping=false;controls.update();controls.enableDamping=true;controls.enabled=false;clear();
+    pauseOrbit();controls.enableDamping=false;controls.update();controls.enableDamping=false;controls.enabled=false;clear();
     const entry=walk.prepare(zone,options.tour?null:point);mode='entering';
     $('#view-name').textContent=ZONES[zone].title+' · Walkthrough';$('#side-title').textContent=ZONES[zone].title;
     $('#side-description').textContent=zone==='pool'?'Walk around the patterned pool, timber deck and colonnade, reconstructed from the poolside renders.':'Explore the garden paths, palm avenue and fountain at walking height.';
@@ -150,6 +151,22 @@ async function init(){
   $('#zoom-in').onclick=()=>zoom(.84);$('#zoom-out').onclick=()=>zoom(1.18);
   $('#rotate').onclick=()=>{flight=null;controls.autoRotate=!controls.autoRotate;$('#rotate').setAttribute('aria-pressed',String(controls.autoRotate));$('#rotate').setAttribute('aria-label',controls.autoRotate?'Pause 360 degree rotation':'Start 360 degree rotation');invalidate();};
   controls.addEventListener('start',()=>{if(mode==='overview'){flight=null;pauseOrbit();invalidate();}});controls.addEventListener('change',invalidate);
+  function rotateOverview(direction){
+    if(mode!=='overview'||elevation.active)return;
+    flight=null;pauseOrbit();
+    const offset=camera.position.clone().sub(controls.target);
+    offset.applyAxisAngle(new T.Vector3(0,1,0),direction*.11);
+    camera.position.copy(controls.target).add(offset);controls.update();invalidate();
+  }
+  for(const button of $$('[data-orbit]')){
+    const direction=button.dataset.orbit==='left'?1:-1;
+    let timer=null,repeated=false;
+    const stop=()=>{clearTimeout(timer);timer=null;};
+    button.onpointerdown=()=>{stop();repeated=false;timer=setTimeout(function repeat(){repeated=true;rotateOverview(direction);timer=setTimeout(repeat,65);},280);};
+    button.onpointerup=stop;button.onpointercancel=stop;button.onpointerleave=stop;
+    button.onclick=()=>{if(!repeated)rotateOverview(direction);};
+    button.onblur=stop;
+  }
   $('#context').onclick=()=>{const blocks=model.context.getObjectByName('Illustrative city blocks');blocks.visible=!blocks.visible;$('#context').setAttribute('aria-pressed',String(blocks.visible));renderer.shadowMap.needsUpdate=true;invalidate();};
   const lighting=createArchitecturalLighting({scene,renderer,sun,ambient,fill,sky,nightSky:daylightSky,model,
     maps:Object.fromEntries(entries),invalidate,announce});
@@ -199,7 +216,7 @@ async function init(){
     focusTower(tower?.userData.towerId??'business');});
   canvas.addEventListener('pointercancel',()=>pointerDown=null);
   canvas.addEventListener('keydown',e=>{if(elevation.active||mode!=='overview'||!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-','Escape'].includes(e.key))return;e.preventDefault();if(e.key==='Escape'){chooseView('courtyard');return;}if(['+','=','-'].includes(e.key)){zoom(e.key==='-'?1.12:.9);return;}flight=null;pauseOrbit();const s=new T.Spherical().setFromVector3(camera.position.clone().sub(controls.target));if(e.key==='ArrowLeft')s.theta-=.1;if(e.key==='ArrowRight')s.theta+=.1;if(e.key==='ArrowUp')s.phi=Math.max(.03,s.phi-.08);if(e.key==='ArrowDown')s.phi=Math.min(Math.PI/2-.03,s.phi+.08);camera.position.copy(new T.Vector3().setFromSpherical(s).add(controls.target));controls.update();invalidate();});
-  function resize(){if(elevation.active){elevation.resize();return;}width=viewport.clientWidth;height=viewport.clientHeight;const previousAspect=camera.aspect;camera.aspect=width/height;
+  function resize(){labelSizesDirty=true;if(elevation.active){elevation.resize();return;}width=viewport.clientWidth;height=viewport.clientHeight;const previousAspect=camera.aspect;camera.aspect=width/height;
     if(ready&&mode==='overview'&&!flight){
       const fit=aspect=>Math.max(1,Math.min(1.7,1.2/aspect));
       camera.position.sub(controls.target).multiplyScalar(fit(camera.aspect)/fit(previousAspect)).add(controls.target);
@@ -208,7 +225,8 @@ async function init(){
     camera.updateProjectionMatrix();renderer.setSize(width,height,false);composer?.setSize(width,height);invalidate();}
   new ResizeObserver(resize).observe(viewport);camera.fov=presets.courtyard.fov;resize();controls.target.set(...presets.courtyard.target);camera.position.copy(fitted(presets.courtyard.pos,presets.courtyard.target));controls.update();canvas.dataset.view='courtyard';$('#viewer').dataset.mode='overview';
   $('#fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('#viewer').requestFullscreen();}catch{announce('Fullscreen is unavailable in this browser.');}};document.addEventListener('fullscreenchange',()=>{$('#fullscreen').setAttribute('aria-label',document.fullscreenElement?'Exit fullscreen':'Enter fullscreen');resize();});if(!document.fullscreenEnabled)$('#fullscreen').hidden=true;
-  const hotspotPositions=[{id:'#pool-hotspot',point:new T.Vector3(0,15.5,64)},{id:'#garden-hotspot',point:new T.Vector3(0,4,24)}],projected=new T.Vector3();
+  const hotspotPositions=[{node:$('#pool-hotspot'),point:new T.Vector3(0,15.5,64)},{node:$('#garden-hotspot'),point:new T.Vector3(0,4,24)}],projected=new T.Vector3();
+  const planPreset=$('button[data-view="plan"]');
   const buildings=towerLayout.map(t=>({id:t.id,name:t.name,anchor:new T.Vector3(t.x,113,t.z)}));
   buildings.push({id:'business',name:model.businessPark.name,anchor:model.businessPark.position.clone().add(new T.Vector3(0,104,0))});
   const roofLabels=buildings.map(({id,name,anchor})=>{
@@ -219,7 +237,7 @@ async function init(){
     const arrow=document.createElement('span');
     arrow.className='roof-arrow';arrow.setAttribute('aria-hidden','true');
     arrow.onclick=()=>focusTower(id);label.append(caption,arrow);viewport.append(label);
-    return {label,caption,anchor};
+    return {label,caption,arrow,anchor,width:0,height:0};
   });
   function updateRoofLabels(){
     const visible=[];
@@ -227,45 +245,58 @@ async function init(){
       projected.copy(marker.anchor).project(camera);
       const x=(1+projected.x)*width/2,y=(1-projected.y)*height/2-3;
       marker.label.hidden=projected.z < -1||projected.z>1||x<0||x>width||y<0||y>height;
-      if(!marker.label.hidden)visible.push({...marker,x,y});
+      if(!marker.label.hidden)visible.push({marker,x,y});
+    }
+    // Batch all layout reads before positioning labels. Their size is static
+    // between breakpoint/font changes, so orbiting never remeasures each label.
+    if(labelSizesDirty){
+      for(const {marker} of visible){marker.width=marker.caption.offsetWidth;marker.height=marker.caption.offsetHeight;}
+      labelSizesDirty=false;
+    }
+    for(const item of visible){
+      if(!item.marker.width){item.marker.width=item.marker.caption.offsetWidth;item.marker.height=item.marker.caption.offsetHeight;}
     }
     // The arrow tip always tracks the roof. Stack just the captions when
     // buildings line up in projection, including on narrow screens.
     const placed=[];
-    for(const {label,caption,x,y} of visible.sort((a,b)=>b.y-a.y)){
-      const w=caption.offsetWidth,h=caption.offsetHeight;
+    for(const {marker,x,y} of visible.sort((a,b)=>b.y-a.y)){
+      const {label,caption,arrow,width:w,height:h}=marker;
       const left=Math.max(2,Math.min(width-w-2,x-w/2));
       let top=y-19-h;
       for(const box of placed){
-        if(left<box.right+3&&left+w>box.left-3&&top<box.bottom+3&&top+h>box.top-3)top=box.top-h-4;
+        if(left<box.right+3&&left+w>box.left-3&&top<box.bottom+3&&top+h+19>box.top-3)top=box.top-h-23;
       }
       top=Math.max(2,top);
-      placed.push({left,right:left+w,top,bottom:top+h});
+      placed.push({left,right:left+w,top,bottom:top+h+19});
       placed.sort((a,b)=>b.top-a.top);
       label.style.transform='translate('+x+'px,'+y+'px)';
       caption.style.left=(left-x)+'px';caption.style.top=(top-y)+'px';
-      label.style.setProperty('--stem',Math.max(0,y-top-h-15)+'px');
+      arrow.style.left=(left+w/2-x-8)+'px';arrow.style.top=(top-y+h+4)+'px';arrow.style.bottom='auto';
     }
   }
-  function updateHotspots(){updateRoofLabels();const visible=[];for(const h of hotspotPositions){const node=$(h.id);projected.copy(h.point).project(camera);const x=(projected.x*.5+.5)*width,y=(-projected.y*.5+.5)*height;node.hidden=mode!=='overview'||$('button[data-view="plan"]').getAttribute('aria-pressed')==='true'||projected.z>1||x<30||x>width-30||y<75||y>height-135;if(!node.hidden)visible.push({node,x,y});}if(visible.length===2&&Math.abs(visible[0].x-visible[1].x)<135&&Math.abs(visible[0].y-visible[1].y)<35)visible[1].y-=39;for(const h of visible){h.node.style.left=h.x+'px';h.node.style.top=h.y+'px';}}
+  function updateHotspots(){updateRoofLabels();const visible=[];for(const h of hotspotPositions){const node=h.node;projected.copy(h.point).project(camera);const x=(projected.x*.5+.5)*width,y=(-projected.y*.5+.5)*height;node.hidden=mode!=='overview'||planPreset.getAttribute('aria-pressed')==='true'||projected.z>1||x<30||x>width-30||y<75||y>height-135;if(!node.hidden)visible.push({node,x,y});}if(visible.length===2&&Math.abs(visible[0].x-visible[1].x)<135&&Math.abs(visible[0].y-visible[1].y)<35)visible[1].y-=39;for(const h of visible){h.node.style.left=h.x+'px';h.node.style.top=h.y+'px';}}
   function draw(now){
     requestAnimationFrame(draw);if(document.hidden||elevation.active){lastTick=now;return;}const dt=Math.min((now-(lastTick||now))/1000,.06);lastTick=now;
     if(flight){const f=flight,t=Math.min((now-f.start)/f.duration,1),v=t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;camera.position.lerpVectors(f.from,f.to,v);const target=new T.Vector3().lerpVectors(f.fromTarget,f.toTarget,v);camera.fov=T.MathUtils.lerp(f.fromFov,f.toFov,v);camera.updateProjectionMatrix();if(f.type==='overview')controls.target.copy(target);else camera.lookAt(target);dirty=true;if(t===1){flight=null;f.onComplete?.();}}
-    if(mode==='overview'&&controls.update())dirty=true;
+    if(mode==='overview'&&controls.update(dt))dirty=true;
     if(mode==='walk'&&walk.update(dt))dirty=true;
     walk.tickRecording(now);
     if(!dirty&&walk.recorder?.state!=='recording')return;
-    if(ready&&now-lastRender<1000/30)return;lastRender=now;
+    const frameInterval=now-lastRender;
+    if(lastRender&&frameInterval<250){frameIntervalTotal+=frameInterval;frameIntervalSamples++;}
+    lastRender=now;
+    if(frameIntervalSamples>=60){canvas.dataset.fps=(1000*frameIntervalSamples/frameIntervalTotal).toFixed(1);frameIntervalTotal=0;frameIntervalSamples=0;}
     for(const detail of fineDetails)detail.mesh.visible=camera.position.distanceTo(detail.position)<100;
     const start=performance.now(),drawnRevision=invalidation;
     if(high&&composer)composer.render();else renderer.render(scene,camera);
     const cost=performance.now()-start;renderCost+=cost;costSamples++;
     if(costSamples>=45){const average=renderCost/costSamples;canvas.dataset.renderMs=average.toFixed(1);if(average>28&&pixelRatio>.8&&!walk.recorder){pixelRatio=Math.max(.8,pixelRatio-.15);renderer.setPixelRatio(pixelRatio);resize();if(high)setHigh(false);}renderCost=0;costSamples=0;}
     frames++;canvas.dataset.frames=String(frames);canvas.dataset.drawCalls=String(renderer.info.render.calls);canvas.dataset.mode=mode;
-    if(frames%3===0){canvas.dataset.azimuth=controls.getAzimuthalAngle().toFixed(3);canvas.dataset.distance=camera.position.distanceTo(controls.target).toFixed(1);$('#compass-arrow').style.transform=`rotate(${-controls.getAzimuthalAngle()*180/Math.PI}deg)`;}
+    if(frames%3===0){canvas.dataset.azimuth=controls.getAzimuthalAngle().toFixed(3);canvas.dataset.distance=camera.position.distanceTo(controls.target).toFixed(1);}
     updateHotspots();dirty=drawnRevision!==invalidation||!!flight||controls.autoRotate||!!(walk.active&&(walk.keys.size||walk.path.length||walk.tour?.running));
     if(!ready){ready=true;$('#loading').hidden=true;canvas.dataset.modelReady='true';canvas.dataset.towers=String(model.towers.length);canvas.dataset.textured='true';announce('3D scene ready. Tap the pool or courtyard to enter a walkthrough.');}
   }
+  document.fonts.ready.then(()=>{labelSizesDirty=true;invalidate();});
   requestAnimationFrame(draw);
   canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();walk.deactivate();$('#error').hidden=false;});
   canvas.addEventListener('webglcontextrestored',()=>location.reload());

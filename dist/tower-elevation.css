@@ -23,7 +23,7 @@
 #elevation-dim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom,#07142985 0%,#07142985 var(--band-top,50%),transparent var(--band-top,50%),transparent var(--band-bottom,52%),#07142985 var(--band-bottom,52%),#07142985 100%);mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent)}
 #elevation-bands{position:absolute;inset:0 auto 0 0;pointer-events:none}
 #elevation-bands div{position:absolute;left:0;right:0;pointer-events:auto;cursor:pointer}
-#elevation-bands i{display:block;position:absolute;left:0;right:0;pointer-events:none;background:#ffddb019}
+#elevation-bands i{display:block;position:absolute;left:0;right:0;pointer-events:none;background:#ffffff26}
 #elevation-bands i[hidden]{display:none}
 #elevation-indicator{position:absolute;left:20%;right:14%;height:1px;background:#ffffffe0;box-shadow:0 0 8px #ffffff24;pointer-events:none;z-index:3}
 #elevation-tag{position:absolute;right:100%;top:0;transform:translate(-12px,-50%);font:500 11px/1 system-ui;letter-spacing:.15em;color:#fff}
@@ -77,3 +77,22 @@
 @media(min-width:651px){.elevation-layout{grid-template-columns:minmax(0,1fr) minmax(280px,42%) minmax(0,1fr)}.elevation-navigation{justify-self:start;max-width:72px}}
 #elevation[open] .elevation-stage{animation:none}
 #elevation-background{opacity:.56;filter:blur(2px) saturate(.86)}
+
+/* Keep the selected original mesh in front of the frosted development. */
+#elevation-stage #scene{pointer-events:auto;touch-action:none;cursor:grab}
+#elevation-stage #scene:active{cursor:grabbing}
+#elevation-indicator[hidden],#elevation-dim[hidden]{display:none}
+.elevation-logo{filter:none;background:transparent;object-fit:contain}
+.elevation-glass{background:linear-gradient(90deg,#081729e0,#153c6575 58%,#102842b3);backdrop-filter:blur(7px)}
+.elevation-stage::after{content:"Drag to rotate · Hover over a floor to select a level";position:absolute;bottom:4px;left:0;right:0;text-align:center;font:11px/1.5 system-ui;letter-spacing:.05em;color:#e5ecf5;pointer-events:none}
+
+#elevation-bands div{pointer-events:none}
+#elevation[data-arriving=true] .elevation-stage,#elevation[data-arriving=true] .elevation-navigation{pointer-events:none}
+.elevation-stage::after{content:"Drag to rotate 360° · Hover over the tower to select a level"}
+
+#elevation-stage #scene,#elevation-stage #scene:active{cursor:default}
+.elevation-stage::after{content:"Hover over the building to select a level · Click Open level to view the plan"}
+
+/* The moving white band is the only floor-hover treatment. */
+#elevation-dim{display:none;background:none;mask-image:none}
+#elevation-bands{overflow:hidden}

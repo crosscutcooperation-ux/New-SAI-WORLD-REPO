@@ -1,4 +1,4 @@
-import {LIGHTING_PRESETS} from './architectural-lighting.js?v=original-day-2';
+import {LIGHTING_PRESETS} from './architectural-lighting.js?v=interior-lighting-2';
 import * as T from './vendor/three.module.js';
 import {BUILDINGS,resolvePlan} from './floor-plan-data.js?v=block-floors-1';
 
@@ -14,6 +14,41 @@ export function createTowerElevation({renderer,canvas,environment,open,close}){
   const keyLight=new T.DirectionalLight(0xffe3ba,2.05);
   scene.add(keyLight,keyLight.target);
   let building=null,mesh=null,parent=null,level=9,home=null;
+  let yaw=0,pitch=0,hasSelection=false,drag=null,dragged=false,interactive=false,lastHover=null;
+  const pickRay=new T.Raycaster(),pickPointer=new T.Vector2();
+  const hoverActive={value:0},hoverFloor={value:new T.Vector2()};
+  let restoredMaterials=[],hoverMaterials=[];
+  function installFloorHover(){
+    const copies=new Map();hoverActive.value=0;
+    const copy=original=>{
+      if(copies.has(original))return copies.get(original);
+      const material=original.clone();
+      material.onBeforeCompile=(shader,renderer)=>{
+        original.onBeforeCompile.call(material,shader,renderer);
+        shader.uniforms.towerHoverActive=hoverActive;shader.uniforms.towerHoverFloor=hoverFloor;
+        shader.vertexShader='varying float vTowerHeight;\n'+shader.vertexShader;
+        shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>',`#include <project_vertex>
+          vec4 towerPosition=vec4(transformed,1.0);
+          #ifdef USE_INSTANCING
+            towerPosition=instanceMatrix*towerPosition;
+          #endif
+          vTowerHeight=(modelMatrix*towerPosition).y;`);
+        shader.fragmentShader='varying float vTowerHeight;uniform float towerHoverActive;uniform vec2 towerHoverFloor;\n'+shader.fragmentShader;
+        shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`
+          float hoveredStorey=step(towerHoverFloor.x,vTowerHeight)*step(vTowerHeight,towerHoverFloor.y);
+          outgoingLight*=mix(1.0,0.32,towerHoverActive*(1.0-hoveredStorey));
+          #include <opaque_fragment>`);
+      };
+      material.customProgramCacheKey=()=>original.customProgramCacheKey.call(original)+'|tower-floor-only-v1';
+      copies.set(original,material);return material;
+    };
+    mesh.traverse(object=>{
+      if(!object.isMesh)return;
+      restoredMaterials.push([object,object.material]);
+      object.material=Array.isArray(object.material)?object.material.map(copy):copy(object.material);
+    });
+    hoverMaterials=[...copies.values()];
+  }
   let buttons=[],slices=[],transition=null,closing=false,pending=null,origin=null;
   const switcher=document.createElement('select');
   switcher.setAttribute('aria-label','Choose a building');
@@ -62,7 +97,11 @@ export function createTowerElevation({renderer,canvas,environment,open,close}){
   function preview(n){
     if(!building)return;
     buttons[level]?.removeAttribute('aria-current');
-    level=n;
+    level=n;hasSelection=true;
+    const base=mesh.position.y;
+    hoverFloor.value.set(n===0?base:base+4+(n-1)*2.7,base+4+n*2.7);
+    hoverActive.value=1;
+    byId('elevation-indicator').hidden=false;byId('elevation-dim').hidden=true;highlight.hidden=false;
     buttons[n].setAttribute('aria-current','true');
     if(slices[n]){
       highlight.style.top=slices[n].style.top;
@@ -79,8 +118,10 @@ export function createTowerElevation({renderer,canvas,environment,open,close}){
     byId('elevation-tag').textContent=format(n);
     if(!slices[n])byId('elevation-indicator').style.top=((1-n/building.floors)*76+15)+'%';
     byId('elevation-note').textContent=plan.available?(plan.verified?'Floor plan available':'Typical and refuge layouts · floor assignment unconfirmed'):'Drawing unavailable';
+    renderer.render(scene,camera);
   }
   function openPlan(n){
+    if(dragged){dragged=false;return;}
     preview(n);resize();
     document.dispatchEvent(new CustomEvent('open-block-floor',{detail:{id:building.id,floor:n}}));
   }
@@ -93,7 +134,12 @@ export function createTowerElevation({renderer,canvas,environment,open,close}){
   byId('leave-elevation').onclick=()=>leave();
   dialog.addEventListener('close',()=>{
     if(!building)return;
+    hoverActive.value=0;
+    for(const [object,material] of restoredMaterials)object.material=material;
+    for(const material of hoverMaterials)material.dispose();
+    restoredMaterials=[];hoverMaterials=[];
     parent.add(mesh);home.replaceWith(canvas);canvas.setAttribute('aria-label',overviewLabel);canvas.tabIndex=0;building=null;mesh=null;
+    interactive=false;lastHover=null;
     renderer.setClearAlpha(1);
     close();closing=false;
     if(pending){const next=pending;pending=null;document.dispatchEvent(new CustomEvent('switch-elevation-tower',{detail:next}));}
@@ -102,12 +148,13 @@ export function createTowerElevation({renderer,canvas,environment,open,close}){
     if(!building||!dialog.open)return;
     const w=stage.clientWidth,h=stage.clientHeight;
     if(!w||!h)return;
-    const commercial=building.id==='business',angle=mesh.rotation.y+.10;
+    const commercial=building.id==='business',angle=mesh.rotation.y;
     const mid=(commercial?57:54)+mesh.position.y;
     const span=Math.max(commercial?103:117,52*h/w);
-    const direction=new T.Vector3(Math.sin(angle),0,Math.cos(angle));
+    const direction=new T.Vector3(Math.sin(angle)*Math.cos(pitch),Math.sin(pitch),Math.cos(angle)*Math.cos(pitch));
+    const distance=180;
     camera.top=span/2;camera.bottom=-span/2;camera.right=span*w/h/2;camera.left=-camera.right;
-    camera.position.copy(mesh.position).addScaledVector(direction,180);camera.position.y=mid;
+    camera.position.copy(mesh.position).addScaledVector(direction,distance);camera.position.y=mid+distance*Math.sin(pitch);
     camera.lookAt(mesh.position.x,mid,mesh.position.z);camera.updateProjectionMatrix();camera.updateMatrixWorld();
     keyLight.target.position.copy(mesh.position);keyLight.position.copy(mesh.position).addScaledVector(direction,85);
     keyLight.position.x+=45;keyLight.position.y+=110;
@@ -132,39 +179,86 @@ export function createTowerElevation({renderer,canvas,environment,open,close}){
     for(let n=0;n<=building.floors;n++){
       const bottom=n===0?base:base+4+(n-1)*2.7;
       const top=base+4+n*2.7;
-      slices[n].style.top=((mid+span/2-top)/span*100)+'%';
-      slices[n].style.height=((top-bottom)/span*100)+'%';
+      const projectedTop=new T.Vector3(mesh.position.x,top,mesh.position.z).project(camera).y;
+      const projectedBottom=new T.Vector3(mesh.position.x,bottom,mesh.position.z).project(camera).y;
+      slices[n].style.top=((1-projectedTop)*50)+'%';
+      slices[n].style.height=((projectedTop-projectedBottom)*50)+'%';
     }
-    const pitch=h*2.7/span;
-    if(matchMedia('(min-width:651px) and (pointer:fine)').matches&&pitch>=12){
-      const rowTop=(mid+span/2-base-98.5)*h/span;
+    const rowPitch=h*2.7/span;
+    if(matchMedia('(min-width:651px) and (pointer:fine)').matches&&rowPitch>=12){
+      const rowTop=parseFloat(slices[building.floors].style.top)*h/100;
       railNav.style.setProperty('--rail-shift',(max-w+20)+'px');
       railNav.style.setProperty('--rail-top',rowTop+'px');
-      railNav.style.setProperty('--pitch',pitch+'px');
+      railNav.style.setProperty('--pitch',rowPitch+'px');
       railNav.style.setProperty('--ground-pitch',(h*4/span)+'px');
       railNav.classList.add('aligned');
     }
-    preview(level);
+    if(hasSelection)preview(level);
   }
+  function clearSelection(){
+    hasSelection=false;buttons[level]?.removeAttribute('aria-current');
+    hoverActive.value=0;
+    byId('elevation-indicator').hidden=true;byId('elevation-dim').hidden=true;highlight.hidden=true;
+    byId('elevation-readout').textContent='SELECT A LEVEL';
+    byId('elevation-note').textContent='Hover over the tower to choose a level, then select Open level.';
+    if(interactive&&building&&dialog.open)renderer.render(scene,camera);
+  }
+  function floorAt(event){
+    if(!building||!mesh)return null;
+    const rect=stage.getBoundingClientRect();
+    pickPointer.set((event.clientX-rect.left)/rect.width*2-1,1-(event.clientY-rect.top)/rect.height*2);
+    pickRay.setFromCamera(pickPointer,camera);
+    const facade=mesh.getObjectByName('Plan-shaped facade with projecting wings and recessed courts');
+    const hit=facade?pickRay.intersectObject(facade,false)[0]:null;
+    if(!hit)return null;
+    const y=mesh.worldToLocal(hit.point.clone()).y;
+    if(y<0||y>98.5)return null;
+    return T.MathUtils.clamp(Math.ceil((y-4)/2.7),0,building.floors);
+  }
+  stage.addEventListener('pointerdown',event=>{
+    if(!interactive||event.button!==0||event.target.closest('button'))return;
+    drag={x:event.clientX,y:event.clientY};dragged=false;lastHover=null;
+  });
+  stage.addEventListener('pointermove',event=>{
+    if(!interactive||!building||event.target.closest('button'))return;
+    if(drag){
+      const dx=event.clientX-drag.x,dy=event.clientY-drag.y;
+      if(!dragged&&Math.hypot(dx,dy)<5)return;
+      dragged=true;clearSelection();
+      drag={x:event.clientX,y:event.clientY};return;
+    }
+    if(event.buttons)return;
+    // Ignore the pointer inherited from opening the dialog and its arrival animation.
+    const previous=lastHover;lastHover={x:event.clientX,y:event.clientY};
+    if(!previous||Math.hypot(event.clientX-previous.x,event.clientY-previous.y)<2)return;
+    dragged=false;
+    const n=floorAt(event);
+    if(n===null)clearSelection();else preview(n);
+  });
+  stage.addEventListener('pointerleave',()=>{lastHover=null;if(!drag)clearSelection();});
+  window.addEventListener('pointerup',()=>{drag=null;lastHover=null;});
+  window.addEventListener('pointercancel',()=>{drag=null;dragged=false;lastHover=null;});
   new ResizeObserver(resize).observe(stage);
   function show(id,selected){
     const entry=BUILDINGS.find(b=>b.sceneId===id||b.id===id);
     if(!entry||dialog.open)return;
+    yaw=0;pitch=0;hasSelection=false;dragged=false;interactive=false;lastHover=null;dialog.dataset.arriving="true";
     origin=open(byId('elevation-background'),selected);building=entry;mesh=selected;parent=mesh.parent;scene.add(mesh);
+    installFloorHover();
     home=document.createComment('overview canvas');canvas.replaceWith(home);stage.prepend(canvas);
     switcher.value=entry.sceneId??entry.id;
     byId('elevation-name').textContent=entry.name;
     byId('elevation-index').textContent=entry.number?'RESIDENTIAL TOWER  /  '+format(entry.number):'COMMERCIAL TOWER';
-    canvas.setAttribute('aria-label',entry.name+' tower elevation');canvas.tabIndex=-1;rail.replaceChildren();bands.replaceChildren(highlight);highlight.hidden=!entry.number;buttons=[];slices=[];
+    canvas.setAttribute('aria-label',entry.name+' original 3D tower, straight-on front elevation. Hover over the model to choose a floor.');canvas.tabIndex=-1;rail.replaceChildren();bands.replaceChildren(highlight);highlight.hidden=!entry.number;buttons=[];slices=[];
     for(let n=entry.floors;n>=0;n--){
       const button=document.createElement('button');button.type='button';button.textContent=format(n);
       button.style.setProperty('--reveal-delay',(0.2+(entry.floors-n)*.026)+'s');
       button.setAttribute('aria-label',n===0?'Ground floor':'Level '+n);
-      button.onfocus=()=>preview(n);button.onpointerenter=e=>{if(e.pointerType==='mouse')preview(n);};
-      button.onclick=()=>openPlan(n);rail.append(button);buttons[n]=button;
+      button.onfocus=()=>{if(interactive)preview(n);};button.onpointermove=e=>{if(interactive&&e.pointerType==='mouse'&&!e.buttons)preview(n);};
+      button.onclick=()=>{if(interactive){dragged=false;preview(n);}};rail.append(button);buttons[n]=button;
       if(entry.number){
         const slice=document.createElement('div');
-        slice.onpointerenter=e=>{if(e.pointerType==='mouse')preview(n);};slice.onclick=()=>openPlan(n);
+        // Projected bands only draw the hover highlight. Picking uses the 3D mesh.
         slices[n]=slice;bands.append(slice);
       }
     }
@@ -175,7 +269,10 @@ export function createTowerElevation({renderer,canvas,environment,open,close}){
       byId('elevation-dim').style.setProperty('--band-top','0%');
       byId('elevation-dim').style.setProperty('--band-bottom','100%');
     }
-    dialog.showModal();preview(Math.min(9,entry.floors));if(!railNav.classList.contains('aligned'))buttons[level].scrollIntoView({block:'center'});
+    dialog.showModal();level=Math.min(9,entry.floors);
+    byId('elevation-indicator').hidden=true;byId('elevation-dim').hidden=true;highlight.hidden=true;
+    byId('elevation-readout').textContent='SELECT A LEVEL';
+    byId('elevation-note').textContent=entry.id==='orchard'?'Tower 5 · Orchard drawings are not included in the supplied files.':'Hover over a floor to choose a level, then select Open level.';
     updateLighting();
     transition?.cancel();
     const duration=matchMedia('(prefers-reduced-motion: reduce)').matches?180:900;
@@ -183,6 +280,7 @@ export function createTowerElevation({renderer,canvas,environment,open,close}){
       {transform:siteTransform(),opacity:0},
       {transform:'translate(0, 0) scale(1)',opacity:1}
     ],{duration,easing:'cubic-bezier(.22,1,.36,1)'});
+    transition.finished.then(()=>{if(!closing&&building===entry){interactive=true;lastHover=null;dialog.dataset.arriving='false';clearSelection();}}).catch(()=>{});
   }
   return {show,resize,get active(){return building!==null;}};
 }

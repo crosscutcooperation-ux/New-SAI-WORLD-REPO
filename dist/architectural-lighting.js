@@ -3,8 +3,8 @@ import * as T from './vendor/three.module.js';
 export const LIGHTING_PRESETS={
   day:{sun:[-160,205,195],color:0xfff0dc,sunPower:2.3,ambient:.48,fill:.28,environment:.5,exposure:1,
     fog:0xc4d6d6,density:.00082,windows:0,lamps:0,turbidity:2.5,rayleigh:1.65},
-  evening:{sun:[-140,21,-400],color:0xffaa62,sunPower:2.25,ambient:.42,fill:.30,environment:.28,exposure:.98,
-    fog:0xe6b29b,density:.0010,windows:.40,lamps:.18,turbidity:6,rayleigh:2.8},
+  evening:{sun:[-240,32,-220],color:0xffb456,sunPower:2.65,ambient:.58,fill:.60,environment:.38,exposure:1.04,
+    fog:0xe6b29b,density:.0010,windows:.28,lamps:.15,turbidity:6,rayleigh:2.8},
   night:{sun:[-110,190,80],color:0x92b7ef,sunPower:.26,ambient:.23,fill:.13,environment:.055,exposure:1.08,
     fog:0x111e36,density:.0013,windows:1.65,lamps:1,turbidity:3,rayleigh:1}
 };
@@ -20,9 +20,21 @@ export function createArchitecturalLighting({scene,renderer,sun,ambient,fill,sky
          vec2 room=floor(vMapUv*vec2(7.0,35.0));
          float occupancy=fract(sin(dot(room,vec2(127.1,311.7))+${seed.toFixed(3)})*43758.5453);
          float variation=mix(0.48,1.0,fract(occupancy*17.0));
-         totalEmissiveRadiance*=step(0.36,occupancy)*variation;`);
+         totalEmissiveRadiance*=mix(0.78,1.0,variation);`);
     };
     material.customProgramCacheKey=()=>String(seed);
+  }
+  const windowColumns={center:[[.166,.2832],[.3887,.4551],[.543,.6055],[.7109,.8262]],left:[[.0677,.2109],[.3464,.5052],[.6302,.7839],[.9089,.9844]],right:[[.0104,.0938],[.2135,.3646],[.4922,.6406],[.7812,.9193]]};
+  const roomMasks={};
+  for(const bay of Object.keys(windowColumns)){
+    const surface=document.createElement('canvas');surface.width=512;surface.height=2240;
+    const ctx=surface.getContext('2d');ctx.fillStyle='#000';ctx.fillRect(0,0,512,2240);
+    ctx.fillStyle='#fff';
+    // Only the recessed upper glazing emits light; balcony rails and stone stay dark.
+    for(let floor=0;floor<35;floor++)for(const [left,right] of windowColumns[bay]){
+      ctx.fillRect(Math.ceil(left*512)+1,floor*64+Math.round(bay==='center'?9:15),Math.floor((right-left)*512)-2,22);
+    }
+    roomMasks[bay]=new T.CanvasTexture(surface);roomMasks[bay].wrapS=T.RepeatWrapping;
   }
   model.towers.forEach((tower,index)=>{
     const facade=tower.getObjectByName('Plan-shaped facade with projecting wings and recessed courts');
@@ -31,7 +43,7 @@ export function createArchitecturalLighting({scene,renderer,sun,ambient,fill,sky
       const bay=bayNames.get(original.name);
       if(!bay)return original;
       const material=original.clone();
-      material.emissive.set(0xffd69a);material.emissiveMap=maps[bay+'Glass'];
+      material.emissive.set(0xffd69a);material.emissiveMap=roomMasks[bay];
       material.emissiveIntensity=0;occupiedWindows(material,index*3.71+1);
       material.name=original.name;windowMaterials.push(material);return material;
     });
@@ -44,7 +56,7 @@ export function createArchitecturalLighting({scene,renderer,sun,ambient,fill,sky
     const officeLights=new Float32Array(panes.count);
     for(let i=0;i<officeLights.length;i++){
       const random=Math.abs(Math.sin(i*127.1+11.7));
-      officeLights[i]=random>.4?.45+random*.55:0;
+      officeLights[i]=.75+random*.25;
     }
     panes.geometry.setAttribute('instanceRoomLight',new T.InstancedBufferAttribute(officeLights,1));
     panes.material.onBeforeCompile=shader=>{
@@ -100,7 +112,8 @@ export function createArchitecturalLighting({scene,renderer,sun,ambient,fill,sky
     sun.position.set(...p.sun);sun.color.set(p.color);sun.intensity=p.sunPower;
     ambient.intensity=p.ambient;ambient.color.set(name==='day'?0xe2f1ff:name==='evening'?0xd9c1b5:0xcbdcf2);
     ambient.groundColor.set(name==='day'?0x6b7256:name==='night'?0x25394b:0x778369);
-    fill.intensity=p.fill;fill.color.set(name==='day'?0xd6eaff:name==='evening'?0x8ba5e3:0xc3d7ff);
+    fill.intensity=p.fill;fill.color.set(name==='day'?0xd6eaff:name==='evening'?0xffd09a:0xc3d7ff);
+    fill.position.set(...(name==='evening'?[130,85,180]:[100,100,-200]));
     renderer.toneMappingExposure=p.exposure;scene.fog.color.set(p.fog);scene.fog.density=p.density;
     const u=sky.material.uniforms;
     u.sunPosition.value.copy(sun.position).normalize();u.turbidity.value=p.turbidity;u.rayleigh.value=p.rayleigh;
@@ -114,7 +127,7 @@ export function createArchitecturalLighting({scene,renderer,sun,ambient,fill,sky
     for(const m of windowMaterials)m.emissiveIntensity=p.windows;
     for(const m of paneMaterials)m.emissiveIntensity=p.windows*.34;
     glow.emissiveIntensity=p.lamps*3.5;
-    for(const {light,power} of lights)light.intensity=power*p.lamps;
+    for(const {light,power} of lights){light.visible=p.lamps>0;light.intensity=power*p.lamps;}
     document.querySelectorAll('[data-lighting]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.lighting===name)));
     document.querySelector('#scene').dataset.lighting=name;
     document.querySelector('#scene').dataset.windowLighting=String(p.windows>0);

@@ -1,7 +1,7 @@
 import * as T from './vendor/three.module.js';
 import {createArchitecturalTower} from './architectural-tower.js?v=roof-center-8';
 import {createAmenityDeck} from './amenity-deck.js?v=walkthrough-3c';
-import {createBusinessPark} from './business-park.js?v=master-layout-7';
+import {createBusinessPark} from './business-park.js?v=grounded-business-1';
 import {createPodium} from './podium.js?v=master-layout-7';
 
 // A reference-led exterior study, not an architectural survey. Units are illustrative.

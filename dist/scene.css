@@ -4,7 +4,7 @@
 .roof-label[hidden]{display:none}
 .roof-caption{position:absolute;white-space:nowrap;text-transform:uppercase;font:700 11px/1.2 system-ui,sans-serif;letter-spacing:.045em;color:#fff;background:#123527ed;border:1px solid #a5f5b8;border-radius:4px;padding:3px 6px;box-shadow:0 1px 4px #09271966}
 .roof-arrow{position:absolute;left:-8px;bottom:0;width:16px;height:14px;background:linear-gradient(90deg,#b7ff89 0 48%,#33d46c 50%);clip-path:polygon(0 0,100% 0,50% 100%)}
-.roof-label::before{content:"";position:absolute;bottom:14px;width:1px;height:var(--stem,0px);background:#8bf9a3}
+
 @media(max-width:600px){.roof-caption{font-size:9px;padding:2px 4px;letter-spacing:.01em}}
 /* Official project identity and a compact navigation panel. */
 .header{height:100px;padding:8px 30px;gap:0}
@@ -54,3 +54,5 @@
 .sidebar .floor-picker select{font-size:12px;padding:10px 9px}
 .sidebar .floor-picker button{font-size:12px;padding:11px}
 .sidebar .floor-picker p{font-size:10px}
+
+.orbit-buttons{display:flex;gap:2px;justify-content:center;border-bottom:1px solid #d5decc;padding-bottom:4px;margin-bottom:3px}.scene-tools .orbit-buttons button{width:24px;font-size:18px;touch-action:none}.scene-tools{width:56px}.scene-tools>button{width:100%}.scene-footer[hidden]{display:none}.scene-bottom{bottom:28px}
