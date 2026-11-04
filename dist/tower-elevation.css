@@ -96,3 +96,5 @@
 /* The moving white band is the only floor-hover treatment. */
 #elevation-dim{display:none;background:none;mask-image:none}
 #elevation-bands{overflow:hidden}
+
+.elevation-stage::after{content:"Hover to highlight · Click a floor or level number to open the plan"}

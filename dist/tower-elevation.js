@@ -200,7 +200,7 @@ export function createTowerElevation({renderer,canvas,environment,open,close}){
     hoverActive.value=0;
     byId('elevation-indicator').hidden=true;byId('elevation-dim').hidden=true;highlight.hidden=true;
     byId('elevation-readout').textContent='SELECT A LEVEL';
-    byId('elevation-note').textContent='Hover over the tower to choose a level, then select Open level.';
+    byId('elevation-note').textContent='Hover to highlight · Click a floor or level number to open its plan.';
     if(interactive&&building&&dialog.open)renderer.render(scene,camera);
   }
   function floorAt(event){
@@ -236,6 +236,11 @@ export function createTowerElevation({renderer,canvas,environment,open,close}){
     if(n===null)clearSelection();else preview(n);
   });
   stage.addEventListener('pointerleave',()=>{lastHover=null;if(!drag)clearSelection();});
+  stage.addEventListener('pointerup',event=>{
+    if(!building||closing||!drag||dragged||event.button!==0||event.target.closest('button'))return;
+    const floor=floorAt(event);
+    if(floor!==null)openPlan(floor);
+  });
   window.addEventListener('pointerup',()=>{drag=null;lastHover=null;});
   window.addEventListener('pointercancel',()=>{drag=null;dragged=false;lastHover=null;});
   new ResizeObserver(resize).observe(stage);
@@ -255,7 +260,7 @@ export function createTowerElevation({renderer,canvas,environment,open,close}){
       button.style.setProperty('--reveal-delay',(0.2+(entry.floors-n)*.026)+'s');
       button.setAttribute('aria-label',n===0?'Ground floor':'Level '+n);
       button.onfocus=()=>{if(interactive)preview(n);};button.onpointermove=e=>{if(interactive&&e.pointerType==='mouse'&&!e.buttons)preview(n);};
-      button.onclick=()=>{if(interactive){dragged=false;preview(n);}};rail.append(button);buttons[n]=button;
+      button.onclick=()=>{if(building&&!closing){dragged=false;openPlan(n);}};rail.append(button);buttons[n]=button;
       if(entry.number){
         const slice=document.createElement('div');
         // Projected bands only draw the hover highlight. Picking uses the 3D mesh.
@@ -272,7 +277,7 @@ export function createTowerElevation({renderer,canvas,environment,open,close}){
     dialog.showModal();level=Math.min(9,entry.floors);
     byId('elevation-indicator').hidden=true;byId('elevation-dim').hidden=true;highlight.hidden=true;
     byId('elevation-readout').textContent='SELECT A LEVEL';
-    byId('elevation-note').textContent=entry.id==='orchard'?'Tower 5 · Orchard drawings are not included in the supplied files.':'Hover over a floor to choose a level, then select Open level.';
+    byId('elevation-note').textContent=entry.id==='orchard'?'Tower 5 · Orchard drawings are not included in the supplied files.':'Hover to highlight · Click a floor or level number to open its plan.';
     updateLighting();
     transition?.cancel();
     const duration=matchMedia('(prefers-reduced-motion: reduce)').matches?180:900;

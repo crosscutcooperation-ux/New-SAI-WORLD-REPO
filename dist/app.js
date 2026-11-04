@@ -8,7 +8,7 @@ import {Sky} from './vendor/addons/objects/Sky.js';
 import {buildSite,setArchitecturalMaterials,towerLayout,places} from './model.js?v=grounded-business-1';
 import {mergeStaticPieces} from './scene-optimization.js?v=master-layout-7';
 import {WalkthroughController} from './walkthrough-controller.js?v=master-layout-7';
-import {createTowerElevation} from './tower-elevation.js?v=mesh-dim-only-7';
+import {createTowerElevation} from './tower-elevation.js?v=floor-click-9';
 import {createArchitecturalLighting} from './architectural-lighting.js?v=hero-performance-8';
 import {ZONES} from './walk-navigation.js?v=master-layout-7';
 
