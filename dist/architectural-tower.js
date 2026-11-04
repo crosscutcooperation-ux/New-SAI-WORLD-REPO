@@ -1,72 +1,79 @@
 import * as T from './vendor/three.module.js';
+import {createSteppedTowerBody} from './stepped-tower.js?v=master-layout-7';
 
 const cube=new T.BoxGeometry(1,1,1);
 export function createArchitecturalTower(cfg,m,textureMaps={}){
   const g=new T.Group();g.position.set(cfg.x,1.1,cfg.z);g.rotation.y=cfg.rotation;
   g.name=`Residential tower ${cfg.id} — textured architectural exterior`;
-  g.userData={towerId:cfg.id,conceptual:true,levelCountUnverified:true};
   function block(w,h,d,x,y,z,material,name=''){const mesh=new T.Mesh(cube,material);mesh.scale.set(w,h,d);mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;mesh.name=name;g.add(mesh);return mesh;}
-  function cyl(rt,rb,h,x,y,z,material,segments=32){const a=new T.Mesh(new T.CylinderGeometry(rt,rb,h,segments),material);a.position.set(x,y,z);a.castShadow=true;a.receiveShadow=true;g.add(a);return a;}
-  function many(items,material,name){const mesh=new T.InstancedMesh(cube,material,items.length);const o=new T.Object3D();items.forEach((a,i)=>{o.position.set(a[0],a[1],a[2]);o.scale.set(a[3],a[4],a[5]);o.updateMatrix();mesh.setMatrixAt(i,o.matrix);});mesh.castShadow=true;mesh.receiveShadow=true;mesh.name=name;g.add(mesh);}
-  function facade(key){return textureMaps[key]?new T.MeshPhysicalMaterial({map:textureMaps[key],color:0xffffff,roughness:textureMaps[key+'Roughness']?1:.86,roughnessMap:textureMaps[key+'Roughness']??null,metalness:textureMaps[key+'Metalness']?1:0,metalnessMap:textureMaps[key+'Metalness']??null,clearcoat:textureMaps[key+'Glass']?1:0,clearcoatMap:textureMaps[key+'Glass']??null,clearcoatRoughness:.08,envMapIntensity:.85}):m.stone;}
-  const center=facade('center'),left=facade('left'),right=facade('right');
-  const body=(front,side)=>[side,side,m.trim,m.stone,front,front===center?m.stone:front];
-  block(38.2,1.2,24,0,.6,0,m.trim,'Stone foundation');
-  // The facade images are UV materials on six-sided solid tower geometry.
-  // Forward and rear faces, recessed wings and projecting balconies remain
-  // separate mesh surfaces and continue to work from every camera angle.
-  block(14.8,94.5,22,0,51.4,1,body(center,left),'Central projecting volume');
-  block(10.8,93.5,19.8,-12.8,50.9,-.4,body(left,left),'West recessed wing');
-  block(10.8,93.5,19.8,12.8,50.9,-.4,body(right,right),'East recessed wing');
-  // The drop-off render shows a stone spine, narrow stair glazing and a columned lobby.
-  block(1.9,93,.14,0,51.3,-10.11,m.glass,'Rear stair glazing');
-  for(let floor=0;floor<31;floor++) block(1.95,.14,.23,0,5.1+floor*3.02,-10.16,m.trim);
-  block(35,3.8,19.5,0,2.55,0,m.stone,'Residential lobby');
-  for(const face of [-1,1]){
-    block(15.2,3.7,.25,0,2.6,face*10,m.glass,'Lobby curtain wall');
-    block(13.7,.44,3.6,0,4.48,face*11.25,m.trim,'Drop-off canopy');
-    block(12.8,.12,3.25,0,4.21,face*11.25,m.brass);
-    for(const x of [-6.3,-5.45,5.45,6.3]){
-      cyl(.21,.25,3.15,x,2.63,face*12.55,m.trim,16);
-      block(.65,.28,.65,x,4.12,face*12.55,m.trim);
-      block(.62,.22,.62,x,1.12,face*12.55,m.stone);
-    }
-    for(const x of [-4,-2,0,2,4])block(.075,3.35,.14,x,2.63,face*10.18,m.brass);
-  }
-  const slabs=[],railPosts=[],handrails=[],cornices=[],pilasters=[];
-  for(let f=0;f<31;f++){
-    const y=4.8+f*3.05;
-    for(const side of [-1,1])for(const x of [-3.7,3.7]){
-      if(side<0)continue;
-      const z=12.65;
-      slabs.push([x,y,z,6.05,.17,1.45]);
-      handrails.push([x,y+.87,z+side*.62,5.95,.055,.06]);
-      handrails.push([x,y+.12,z+side*.62,5.95,.045,.05]);
-      for(let j=0;j<14;j++)railPosts.push([x-2.81+j*.43,y+.49,z+side*.62,.033,.79,.04]);
-    }
-  }
-  for(const y of [3.8,34.5,65,98.5])cornices.push([0,y,.5,37.6,.24,22.7]);
-  for(const x of [-18.1,18.1])for(const z of [-10.2,9.9])pilasters.push([x,51,z,.47,96,.65]);
-  for(const x of [-7.4,7.4])for(const z of [-10.15,12.15])pilasters.push([x,51.6,z,.82,95,.48]);
-  many(slabs,m.trim,'Three-dimensional balcony floor slabs');many(railPosts,m.dark,'Fine ornamental balcony balusters');many(handrails,m.brass,'Metal balcony handrails');many(cornices,m.trim,'Stone cornice courses');many(pilasters,m.stone,'Facade piers');
+  function cyl(rt,rb,h,x,y,z,material,segments=32,parent=g){const a=new T.Mesh(new T.CylinderGeometry(rt,rb,h,segments),material);a.position.set(x,y,z);a.castShadow=true;a.receiveShadow=true;parent.add(a);return a;}
+  const body=createSteppedTowerBody(cfg,m,textureMaps);g.add(body);
+  const sideWing=Math.abs(cfg.rotation)>1;
+  g.scale.x=(cfg.mirror?-1:1)*(sideWing?cfg.depth:cfg.width)/37;
+  g.scale.z=(sideWing?cfg.width:cfg.depth)/body.userData.depth;
+  g.userData={towerId:cfg.id,name:cfg.name,floors:35,sourcePage:body.userData.sourcePage,masterLayoutOnly:body.userData.masterLayoutOnly};
+  const depth=body.userData.depth,roofOffset=body.userData.forward-4,roofStart=g.children.length;
   // Roof silhouettes, mouldings, pediment and tiered green cupola.
-  for(const x of [-12.8,12.8]){block(11.5,.5,21,x,98.2,-.4,m.trim);block(11.3,.35,20.7,x,98.9,-.4,m.trim);}
-  block(16.3,.55,24,0,99.1,1,m.trim);block(15.8,.32,23.6,0,99.9,1,m.trim);
+  block(16.3,.55,11,0,99.1,-1,m.trim);block(15.8,.32,10.4,0,99.9,-1,m.trim);
   block(12,2.8,9.5,0,101.1,-1,m.stone);block(12.6,.4,10.2,0,102.7,-1,m.trim);
   const triangle=new T.Shape();triangle.moveTo(-7.6,0);triangle.lineTo(0,5.3);triangle.lineTo(7.6,0);triangle.closePath();
-  for(const z of [12.2,-10.7]){const p=new T.Mesh(new T.ExtrudeGeometry(triangle,{depth:.55,bevelEnabled:true,bevelSize:.08,bevelThickness:.1,bevelSegments:1}),m.stone);p.position.set(0,99.6,z);g.add(p);const ring=new T.Mesh(new T.TorusGeometry(1.03,.14,8,32),m.trim);ring.position.set(0,102.2,z+.59);g.add(ring);}
+  const opening=new T.Path();opening.absellipse(0,2.05,1.04,1.28,0,2*Math.PI,true);triangle.holes.push(opening);
+  for(const z of [3.6]){const p=new T.Mesh(new T.ExtrudeGeometry(triangle,{depth:.55,bevelEnabled:true,bevelSize:.08,bevelThickness:.1,bevelSegments:1}),m.stone);p.position.set(0,99.6,z);g.add(p);const ring=new T.Mesh(new T.TorusGeometry(1.03,.14,8,32),m.trim);ring.scale.y=1.23;ring.position.set(0,101.65,z+.59);g.add(ring);}
+  // Each plan footprint is centered on its local X/Z origin. Keep the
+  // cupola on that axis when the facade and front pediment step outward.
+  const cupola=new T.Group();
+  cupola.name='Centered rooftop cupola';
+  g.add(cupola);
   const domeMat=new T.MeshStandardMaterial({color:0x849c72,roughness:.73,metalness:.08});
-  cyl(3.8,3.8,.4,0,104,-1,m.trim);cyl(3.45,3.45,2.6,0,105.5,-1,domeMat);
+  const drum=(rt,rb,h,y,mat,segments=32)=>cyl(rt,rb,h,0,y,0,mat,segments,cupola);
+  drum(3.65,3.85,5.4,101.2,m.stone);
+  drum(3.8,3.8,.4,104,m.trim);drum(3.45,3.45,2.6,105.5,domeMat);
   const profile=[[0,0],[3.72,0],[3.74,.35],[3.55,1.3],[2.85,2.5],[1.8,3.2],[.5,3.8],[0,4.1]].map(p=>new T.Vector2(...p));
-  const dome=new T.Mesh(new T.LatheGeometry(profile,48),domeMat);dome.position.set(0,106.7,-1);dome.castShadow=true;g.add(dome);
+  const dome=new T.Mesh(new T.LatheGeometry(profile,48),domeMat);dome.position.y=106.7;dome.castShadow=true;cupola.add(dome);
   for(let i=0;i<12;i++){
-    const a=i*Math.PI/6,x=Math.sin(a)*3.48,z=Math.cos(a)*3.48-1;
-    const recess=new T.Mesh(new T.PlaneGeometry(.58,1.25),m.dark);recess.position.set(x,105.5,z);recess.rotation.y=a;g.add(recess);
-    const arch=new T.Mesh(new T.TorusGeometry(.35,.07,6,16,Math.PI),m.trim);arch.position.set(x,106.15,z);arch.rotation.y=a;g.add(arch);
+    const a=i*Math.PI/6,x=Math.sin(a)*3.48,z=Math.cos(a)*3.48;
+    const recess=new T.Mesh(new T.PlaneGeometry(.58,1.25),m.dark);recess.position.set(x,105.5,z);recess.rotation.y=a;cupola.add(recess);
+    const arch=new T.Mesh(new T.TorusGeometry(.35,.07,6,16,Math.PI),m.trim);arch.position.set(x,106.15,z);arch.rotation.y=a;cupola.add(arch);
   }
-  cyl(1.3,1.7,.45,0,111.1,-1,m.trim);cyl(1.07,1.2,1.5,0,112,-1,domeMat);
-  const small=new T.Mesh(new T.SphereGeometry(1.15,24,12,0,Math.PI*2,0,Math.PI/2),domeMat);small.position.set(0,112.8,-1);small.scale.y=1.25;g.add(small);
-  cyl(.13,.18,1.7,0,114.7,-1,m.brass,12);
-  for(const x of [-18,18])for(const z of [-10,10]){cyl(.12,.35,2,x,99.8,z,m.trim,8);}
+  drum(1.3,1.7,.45,111.1,m.trim);drum(1.07,1.2,1.5,112,domeMat);
+  const small=new T.Mesh(new T.SphereGeometry(1.15,24,12,0,Math.PI*2,0,Math.PI/2),domeMat);small.position.y=112.8;small.scale.y=1.25;cupola.add(small);
+  drum(.13,.18,1.7,114.7,m.brass,12);
+  // Stone coping follows the two raking edges of the pediment.
+  for(const side of [-1,1]){const rake=block(9.35,.32,.94,side*3.8,102.27,3.88,m.trim);rake.rotation.z=-side*Math.atan2(5.3,7.6);}
+  const roofBase=98.55;
+  for(const object of g.children.slice(roofStart)){
+    if(object!==cupola)object.position.z+=roofOffset;
+    object.position.y=roofBase+(object.position.y-roofBase)*.74;object.scale.y*=.74;
+  }
+  // Glazed arrival and paired columns sit at the forward spine of each footprint.
+  const entranceZ=body.userData.forward+.25;
+  block(9,3.45,.15,0,2.15,entranceZ,m.glass,'Recessed entrance glazing');
+  block(11.6,.38,3.6,0,4.05,entranceZ+1.2,m.trim,'Residential drop-off canopy');
+  for(const x of [-5,-4.3,4.3,5])cyl(.18,.23,3.4,x,2.25,entranceZ+2.4,m.trim,16);
+  // The drop-off render shows a masonry stair spine with a continuous narrow
+  // opening. Set it against the rear edge of this tower's own central bays.
+  const centralPoints=body.userData.footprint.filter(([x])=>Math.abs(x)<=6.8);
+  const stairFace=Math.min(...centralPoints.map(([,z])=>z))-.22;
+  for(const side of [-1,1]){
+    block(4.2,94.5,1.4,side*3.35,51.25,stairFace+.7,m.stone,'Stair enclosure');
+    for(const x of [1.25,5.45])block(.22,94.9,.32,side*x,51.4,stairFace-.12,m.trim);
+  }
+  block(2.5,94.5,.16,0,51.25,stairFace+.48,m.dark,'Recessed stairwell');
+  block(.07,94.5,.12,0,51.25,stairFace+.28,m.trim);
+  for(let level=0;level<=35;level++){
+    const y=4+2.7*level;
+    block(2.52,.17,.62,0,y,stairFace+.11,m.trim);
+    if(level%5===0)for(const side of [-1,1])block(4.4,.23,.52,side*3.35,y,stairFace-.06,m.trim);
+  }
+  // Recessed glazing, paired columns with capitals, and a projecting portico.
+  block(12.1,3.6,.22,0,2.05,stairFace+.1,m.glass,'Drop-off lobby doors');
+  for(const x of [-5.8,-2.9,0,2.9,5.8])block(.07,3.55,.18,x,2.05,stairFace-.08,m.brass);
+  block(13.1,.45,3.9,0,4.15,stairFace-1.5,m.stone);
+  block(13.4,.15,4.1,0,4.4,stairFace-1.5,m.trim);
+  for(const x of [-5.75,-5.15,5.15,5.75]){
+    cyl(.18,.23,3.25,x,2.05,stairFace-3,m.trim,16);
+    block(.54,.23,.54,x,.52,stairFace-3,m.stone);
+    block(.62,.22,.62,x,3.77,stairFace-3,m.trim);
+  }
   return g;
 }

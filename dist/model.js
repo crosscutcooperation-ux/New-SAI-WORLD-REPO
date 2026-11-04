@@ -1,21 +1,31 @@
 import * as T from './vendor/three.module.js';
-import {createArchitecturalTower} from './architectural-tower.js?v=architecture-4d';
+import {createArchitecturalTower} from './architectural-tower.js?v=roof-center-8';
 import {createAmenityDeck} from './amenity-deck.js?v=walkthrough-3c';
-import {createBusinessPark} from './business-park.js?v=architecture-4d';
-import {createPodium} from './podium.js?v=architecture-4d';
+import {createBusinessPark} from './business-park.js?v=master-layout-7';
+import {createPodium} from './podium.js?v=master-layout-7';
 
 // A reference-led exterior study, not an architectural survey. Units are illustrative.
-export const towerLayout = [
-  {id:'A',x:-83,z:25,rotation:Math.PI/2},
-  {id:'B',x:-83,z:-16,rotation:Math.PI/2},
-  {id:'C',x:-43,z:-49,rotation:0},
-  {id:'D',x:0,z:-49,rotation:0},
-  {id:'E',x:43,z:-49,rotation:0},
-  {id:'F',x:83,z:-16,rotation:-Math.PI/2},
-  {id:'G',x:83,z:25,rotation:-Math.PI/2},
+// Bounds measured on brochure page 27 (1872 x 648). Page-right maps to +X
+// and the roadside maps to +Z. Register all towers to the same pool landmark.
+const planScale=.38;
+const onSite=(x,y)=>({x:(x-405)*planScale,z:64+(y-534)*planScale});
+const residentialBlocks=[
+  ['A','Castle',[152,371,214,477],Math.PI/2,true],
+  ['B','Vista',[134,289,233,371],0],
+  ['C','Mist',[248,289,341,388],0],
+  ['D','Spring',[357,289,450,388],0],
+  ['E','Orchard',[466,289,558,388],0],
+  ['F','Meadows',[574,289,673,371],0],
+  ['G','Heaven',[593,371,656,477],-Math.PI/2],
+  ['H','Breeze',[599,198,729,267],0],
 ];
+export const towerLayout=residentialBlocks.map(([id,name,bounds,rotation,mirror=false])=>{
+  const [left,back,right,front]=bounds;
+  return {id,name,plan:name.toLowerCase(),...onSite((left+right)/2,(back+front)/2),
+    width:(right-left)*planScale,depth:(front-back)*planScale,rotation,mirror};
+});
 export const places = [
-  {id:'garden',title:'Central gardens',category:'LANDSCAPE',pos:[0,2,-6],image:'garden.jpg',text:'Garden courts, palm-lined paths and seating between the residential towers. Reconstructed from the landscape renders.'},
+  {id:'garden',title:'Central gardens',category:'LANDSCAPE',pos:[0,2,24],image:'garden.jpg',text:'Garden courts, palm-lined paths and seating between the residential towers. Reconstructed from the landscape renders.'},
   {id:'club',title:'The clubhouse',category:'LEISURE',pos:[0,15,57],image:'club.jpg',text:'A central clubhouse and terrace overlooking the landscaped courtyard, based on the supplied club views.'},
   {id:'pool',title:'Pool terrace',category:'WELLNESS',pos:[0,16,70],image:'pool.jpg',text:'An elevated pool and circular pavilion inspired by the pool and rooftop café references.'},
   {id:'sports',title:'Sports & movement',category:'ACTIVE LIVING',pos:[-55,14,57],image:'sports.jpg',text:'A tennis court and elevated running track, with the adjoining futsal court represented on the podium.'},
@@ -27,6 +37,7 @@ const mat=(color,opts={})=>new T.MeshStandardMaterial({color,roughness:.79,metal
 const materials=Object.fromEntries(Object.entries(palette).map(([k,v])=>[k,mat(v,k==='glass'?{metalness:.32,roughness:.27}:k==='water'?{roughness:.22,metalness:.3}:{})]));
 let facadeMaps={};
 export function setArchitecturalMaterials(t){
+  materials.canopy=t.canopy;
   facadeMaps={center:t.center,left:t.left,right:t.right};
   for(const name of ['center','left','right'])for(const suffix of ['Roughness','Metalness','Glass'])facadeMaps[name+suffix]=t[name+suffix];
   if(t.stone){materials.stone.map=t.stone;materials.stone.color.set(0xd2c3a9);materials.stone.roughness=.84;materials.wall.map=t.stone;}
@@ -61,14 +72,18 @@ export function buildSite(){
   const {stone,trim,path,grass,water,hedge,brass,glass,dark,road}=materials;
   box(land,211,2.4,159,0,-.5,8,path,'Site plinth');
   box(land,205,.18,153,0,.79,8,grass);
+
+  const breeze=towerLayout.find(tower=>tower.plan==='breeze');
+  box(land,breeze.width+8,2.4,breeze.depth+9,breeze.x,-.5,breeze.z,path,'Breeze arrival terrace');
   // Tower-side driveways and pedestrian loops.
-  for(const x of [-98,98])box(land,7,.2,154,x,.95,8,path);
-  box(land,202,.18,6,0,.99,-64,path);
+  box(land,7,.2,154,-101,.95,8,path);
+  box(land,7,.2,113,105,.95,28,path);
+  box(land,166,.18,5,-16,.99,-36,path);
   box(land,140,.22,7,0,1.02,34,path);
-  box(land,6,.2,93,0,1.04,-7,path);
+  box(land,6,.2,36,0,1.04,21,path);
   const hedges=[],pavers=[];
-  for(let i=0;i<4;i++)for(const x of [-33,33]){
-    const z=-28+i*17;
+  for(let i=0;i<2;i++)for(const x of [-33,33]){
+    const z=18+i*14;
     box(land,47,.3,12,x,1.05,z,grass);
     hedges.push([x,1.5,z-6,46,.85,.7],[x,1.5,z+6,46,.85,.7],[x-23,1.5,z,.7,.85,12],[x+23,1.5,z,.7,.85,12]);
     box(land,132,.14,2.2,0,1.22,z+8.3,path);
@@ -76,8 +91,8 @@ export function buildSite(){
   }
   batch(land,hedges,hedge,unit,'Garden hedges');batch(land,pavers,trim,unit,'Stepping stones');
   for(const a of hedges)walkObstacles.push({zone:'garden',x:a[0],z:a[2],w:a[3],d:a[5]});
-  cylinder(land,6,6,.3,0,1.3,4,path);cylinder(land,4.7,4.7,.26,0,1.55,4,water);cylinder(land,.5,1,3.4,0,3.3,4,trim);
-  const benches=[];for(const x of [-59,59,-14,14])for(let z=-29;z<28;z+=17)benches.push([x,1.9,z,4,.4,1]);batch(land,benches,materials.wall);
+  cylinder(land,6,6,.3,0,1.3,24,path);cylinder(land,4.7,4.7,.26,0,1.55,24,water);cylinder(land,.5,1,3.4,0,3.3,24,trim);
+  const benches=[];for(const x of [-59,59,-14,14])for(let z=17;z<=31;z+=14)benches.push([x,1.9,z,4,.4,1]);batch(land,benches,materials.wall);
   for(const a of benches)walkObstacles.push({zone:'garden',x:a[0],z:a[2],w:a[3],d:a[5]});
   box(land,207,.16,15,0,.99,79.5,path,'Paved boulevard promenade');
   const podium=createPodium(materials);land.add(podium);
@@ -112,11 +127,11 @@ export function buildSite(){
     }
     walkObstacles.push({zone:'garden',x,z,r:.33});
   }
-  for(let x=-95;x<=95;x+=7){tree(x,-65,.65+rnd(seed)*.3);tree(x,80,.7+rnd(seed)*.35);}
-  for(let z=-50;z<=73;z+=7){tree(-103,z,.75);tree(103,z,.7);}
-  for(let x=-61;x<=61;x+=15)for(let z=-32;z<=27;z+=17){if(Math.abs(x)>8)tree(x,z,.55+rnd(seed)*.25);}
+  for(let x=-95;x<=95;x+=7){if(x<68)tree(x,-61,.65+rnd(seed)*.3);tree(x,80,.7+rnd(seed)*.35);}
+  for(let z=-50;z<=73;z+=7){tree(-103,z,.75);if(z>breeze.z+breeze.depth/2+3)tree(108,z,.7);}
+  for(let x=-61;x<=61;x+=15)for(let z=16;z<=30;z+=14){if(Math.abs(x)>8)tree(x,z,.82+rnd(seed)*.4);}
   for(let x=-65;x<=65;x+=13){palm(x,36);palm(x,76);}
-  for(let z=-28;z<=25;z+=13){palm(-8,z);palm(8,z);}
+  for(let z=15;z<=35;z+=10){palm(-8,z);palm(8,z);}
   batch(land,trunks,mat(0x74604a),new T.CylinderGeometry(.7,1,1,9),'Tree trunks');
   // One instanced spray carries folded leaves and fine branchlets rather than a solid crown.
   const leaves=[],leafColors=[];
@@ -137,6 +152,15 @@ export function buildSite(){
   const spray=new T.BufferGeometry();spray.setAttribute('position',new T.Float32BufferAttribute(leaves,3));spray.setAttribute('color',new T.Float32BufferAttribute(leafColors,3));spray.computeVertexNormals();
   for(let i=0;i<crowns.length;i++)crowns[i][6]=rnd(i)*6.28;
   batch(land,crowns,new T.MeshStandardMaterial({vertexColors:true,side:T.DoubleSide,roughness:.92}),spray,'Branch and leaf sprays');
+  if(materials.canopy){
+    const cards=[];
+    for(let n=0;n<trunks.length;n++){
+      const [x,,z,,h]=trunks[n],s=h/3.8;
+      for(let j=0;j<3;j++)cards.push([x,5.45*s,z,6.3*s,6.8*s,1,rnd(n)*Math.PI+j*Math.PI/3]);
+    }
+    const foliage=batch(land,cards,new T.MeshLambertMaterial({map:materials.canopy,side:T.DoubleSide,alphaTest:.37,alphaToCoverage:true,color:0xeff4df}),new T.PlaneGeometry(1,1),'Garden tree foliage');
+    foliage.castShadow=true;
+  }
   batch(land,palms,mat(0x806d52),new T.CylinderGeometry(.63,1,1,10),'Palm trunks');
   const blade=[],bladeColors=[];
   function triangle(a,b,c,tint){blade.push(...a,...b,...c);for(let k=0;k<3;k++)bladeColors.push(...tint);}
@@ -169,6 +193,19 @@ export function buildSite(){
   const cars=[],carRoofs=[];
   for(let i=0;i<19;i++){const x=-150+i*17+(rnd(i+88)*6),z=i%2?98:109;cars.push([x,-1.9,z,3.6,.9,1.7]);carRoofs.push([x,-1.3,z,1.9,.5,1.55]);}
   batch(context,cars,mat(0xeaece7));batch(context,carRoofs,mat(0x798885));
+  if(materials.canopy){
+    // Layer distant planting beyond the access roads, with open gaps toward the skyline.
+    const trees=[];
+    for(let i=0;i<420;i++){
+      const angle=rnd(i+2000)*2*Math.PI,distance=148+rnd(i+3000)*190;
+      const x=Math.cos(angle)*distance,z=Math.sin(angle)*distance;
+      if(z>82||Math.abs(Math.abs(x)-133)<12||Math.abs(z-103)<18||Math.abs(z+94)<12)continue;
+      const h=6+rnd(i+5000)*6,turn=rnd(i+4000)*Math.PI;
+      for(let side=0;side<2;side++)trees.push([x,h*.5-2.5,z,h*1.1,h,1,turn+side*Math.PI/2]);
+    }
+    const grove=batch(context,trees,new T.MeshLambertMaterial({map:materials.canopy,side:T.DoubleSide,alphaTest:.36,color:0xaab89e}),new T.PlaneGeometry(1,1),'Distant garden canopy');
+    grove.castShadow=false;
+  }
   context.position.y=3.32;
   return {root,towers,land,context,walkObstacles,poolWater:amenityDeck.water,businessPark,podium};
 }

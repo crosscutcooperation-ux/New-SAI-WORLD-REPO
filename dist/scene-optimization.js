@@ -1,4 +1,5 @@
 import * as T from './vendor/three.module.js';
+import {TOWER_FOOTPRINTS} from './tower-footprints.js';
 import {mergeGeometries} from './vendor/addons/utils/BufferGeometryUtils.js';
 
 // Merge small static pieces by material, while retaining tower groups and
@@ -13,7 +14,7 @@ export function mergeStaticPieces(group){
   }
 }
 export function createPickingScene(towerLayout){
-  const towers=[],geometry=new T.BoxGeometry(38.5,115,26),material=new T.MeshBasicMaterial({side:T.DoubleSide});
-  for(const t of towerLayout){const p=new T.Mesh(geometry,material);p.position.set(t.x,58,t.z);p.rotation.y=t.rotation;p.userData.towerId=t.id;p.updateMatrixWorld();towers.push(p);}
+  const towers=[],material=new T.MeshBasicMaterial({side:T.DoubleSide});
+  for(const t of towerLayout){const p=new T.Mesh(new T.BoxGeometry(38.5,115,TOWER_FOOTPRINTS[t.plan].depth+1),material);p.position.set(t.x,58,t.z);p.rotation.y=t.rotation;p.userData.towerId=t.id;p.updateMatrixWorld();towers.push(p);}
   return towers;
 }

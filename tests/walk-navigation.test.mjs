@@ -11,7 +11,7 @@ assert.ok(model.podium.getObjectByName('Upper arcade piers'));
 assert.ok(model.podium.children.some(node=>node.name.startsWith('Tall arched entrance') && node.geometry.type==='ExtrudeGeometry'));
 for(const [zone,cfg]of Object.entries(ZONES))assert.ok(isWalkable(zone,...cfg.start,obs),`${zone} entry is clear`);
 assert.equal(isWalkable('pool',0,64,obs),false,'Pool cannot be walked into');
-assert.equal(isWalkable('garden',0,4,obs),false,'Fountain cannot be walked into');
+assert.equal(isWalkable('garden',0,24,obs),false,'Fountain cannot be walked into');
 assert.equal(isWalkable('garden',0,-36,obs),false,'Back boundary stops before the residential foundation');
 for(const zone of Object.keys(ZONES)){
   const route=TOUR_ROUTES[zone];for(const p of route)assert.ok(isWalkable(zone,...p,obs),`${zone} waypoint ${p} is clear`);

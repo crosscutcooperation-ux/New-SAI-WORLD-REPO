@@ -33,3 +33,15 @@ for name,(x0,y0,x1,y1) in {
     'posters-east':(620,98,898,210),'arcade-glass':(2,231,296,267)
 }.items():
     cv2.imwrite(str(out/(name+'.jpg')),middle[y0:y1,x0:x1],[cv2.IMWRITE_JPEG_QUALITY,95])
+
+# Align the photographed facade strips to the brochure's 35 residential levels.
+for key in ['center','left','right']:
+    for suffix in ['', '-roughness','-metalness','-glass']:
+        original=Image.open(out/('facade-'+key+suffix+'.jpg'))
+        width,height=original.size
+        result=Image.new(original.mode,(width,2450))
+        for row in range(35):
+            source_row=min(29,int(row*30/35))
+            strip=original.crop((0,round(source_row*height/30),width,round((source_row+1)*height/30)))
+            result.paste(strip.resize((width,70),Image.Resampling.LANCZOS),(0,row*70))
+        result.save(out/('facade-35-'+key+suffix+'.jpg'),quality=95)

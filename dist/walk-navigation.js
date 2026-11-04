@@ -2,18 +2,18 @@
 export const EYE_HEIGHT=1.65;
 export const ZONES={
   pool:{title:'Pool terrace',bounds:[-29.2,29.2,42.8,77.2],start:[23.5,73.4],look:[0,63],floor:12.8},
-  garden:{title:'Central courtyard',bounds:[-65,65,-35,39],start:[0,33.5],look:[0,-24],floor:1.25},
+  garden:{title:'Central courtyard',bounds:[-65,65,12.5,39],start:[0,33.5],look:[0,14],floor:1.25},
 };
 export const TOUR_ROUTES={
   pool:[[23.5,73.4],[23.5,55],[13,55.9],[0,55.9],[-13,55.9],[-23.5,56],[-23.5,73.4]],
-  garden:[[0,33.5],[0,15],[6.5,12],[6.5,-3],[0,-5],[0,-29]],
+  garden:[[0,33.5],[6.7,31.5],[6.7,18],[0,14]],
 };
 export function walkFloor(zone,x,z){return zone==='pool'&&Math.hypot(x,z-47)<10.7?13.1:ZONES[zone].floor;}
 export function isWalkable(zone,x,z,obstacles=[]){
   const b=ZONES[zone].bounds,r=.38;
   if(x<b[0]+r||x>b[1]-r||z<b[2]+r||z>b[3]-r)return false;
   if(zone==='pool'&&x>-20.5-r&&x<20.5+r&&z>56.8-r&&z<71.2+r)return false;
-  if(zone==='garden'&&Math.hypot(x,z-4)<5.4+r)return false;
+  if(zone==='garden'&&Math.hypot(x,z-24)<5.4+r)return false;
   for(const a of obstacles){if(a.zone!==zone)continue;if(a.r!==undefined){if(Math.hypot(x-a.x,z-a.z)<a.r+r)return false;}else if(Math.abs(x-a.x)<a.w/2+r&&Math.abs(z-a.z)<a.d/2+r)return false;}
   return true;
 }

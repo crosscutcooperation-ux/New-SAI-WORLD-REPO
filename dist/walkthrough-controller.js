@@ -1,5 +1,5 @@
 import * as T from './vendor/three.module.js';
-import {EYE_HEIGHT,ZONES,TOUR_ROUTES,walkFloor,moveWithin,isWalkable,nearestWalkable,findWalkPath} from './walk-navigation.js?v=walkthrough-3e';
+import {EYE_HEIGHT,ZONES,TOUR_ROUTES,walkFloor,moveWithin,isWalkable,nearestWalkable,findWalkPath} from './walk-navigation.js?v=master-layout-7';
 
 const $=s=>document.querySelector(s);
 const wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
@@ -34,7 +34,7 @@ export class WalkthroughController{
     const start=point?nearestWalkable(zone,point.x,point.z,this.obstacles):{x:ZONES[zone].start[0],z:ZONES[zone].start[1]};
     this.position=start??{x:ZONES[zone].start[0],z:ZONES[zone].start[1]};
     const y=walkFloor(zone,this.position.x,this.position.z)+EYE_HEIGHT;
-    const look=zone==='pool'?[0,y+.4,55]:[0,y+1,-25];
+    const look=zone==='pool'?[0,y+.4,55]:[0,y+1,14];
     $('#walk-zone-title').textContent=ZONES[zone].title;$('#walk-status').textContent='Entering the walking area…';$('#walk-panel').hidden=false;
     $('#viewer').dataset.mode='entering';this.refreshUI();
     return{position:[this.position.x,y,this.position.z],target:look};

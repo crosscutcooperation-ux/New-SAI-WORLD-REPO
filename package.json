@@ -6,7 +6,7 @@
   "scripts": {
     "start": "python -m http.server 4173 --bind 127.0.0.1 --directory dist",
     "export": "node scripts/export-model.mjs",
-    "check": "node --check dist/app.js && node --check dist/model.js && node --check dist/walkthrough-controller.js && node --check dist/walk-navigation.js && node --check dist/scene-optimization.js && node --check dist/amenity-deck.js && node --check dist/podium.js && node --check dist/business-park.js && node --check dist/architectural-tower.js",
+    "check": "node --check dist/app.js && node --check dist/model.js && node --check dist/walkthrough-controller.js && node --check dist/walk-navigation.js && node --check dist/scene-optimization.js && node --check dist/amenity-deck.js && node --check dist/podium.js && node --check dist/business-park.js && node --check dist/architectural-tower.js && node --check dist/floor-plan-data.js && node --check dist/floor-plans.js && node --check dist/floor-plan-viewer.js && node --check dist/stepped-tower.js && node --check dist/tower-footprints.js",
     "test": "node tests/walk-navigation.test.mjs"
   }
 }
